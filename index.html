@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="description" content="Crie orçamentos profissionais de instalação e manutenção de ar-condicionado por voz ou manualmente.">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon.svg">
     <title>Ar no Preço Certo</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -39,13 +44,16 @@
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
             70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
         .mic-pulsing { animation: pulse-ring 2s infinite; }
+        :focus-visible { outline: 3px solid #60a5fa; outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
     </style>
 </head>
 <body class="h-full flex justify-center items-center bg-slate-900 text-slate-800">
 
     <!-- Mobile Container Wrapper -->
-    <div class="w-full max-w-md h-full sm:h-[90vh] sm:rounded-3xl bg-slate-50 shadow-2xl flex flex-col overflow-hidden relative border border-slate-800">
+    <div class="w-full max-w-5xl h-full sm:h-[92vh] sm:rounded-3xl bg-slate-50 shadow-2xl flex flex-col overflow-hidden relative border border-slate-800">
 
         <!-- Top Header Bar -->
         <header class="bg-white px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100 sticky top-0 z-30">
@@ -135,7 +143,7 @@
                             <i class="fa-solid fa-microphone" id="mic-icon"></i>
                             <div id="mic-ring" class="absolute inset-0 rounded-full border-4 border-white/50 hidden"></div>
                         </button>
-                        <span id="mic-status" class="text-xs font-semibold text-blue-100 mt-3">Toque para falar o serviço</span>
+                        <span id="mic-status" aria-live="polite" class="text-xs font-semibold text-blue-100 mt-3">Toque para criar orçamento por etapas</span>
                     </div>
 
                     <!-- Voice Transcript Box -->
@@ -267,6 +275,11 @@
 
             <!-- Modal Body -->
             <div class="p-5 overflow-y-auto space-y-4 flex-1">
+
+                <div class="rounded-2xl border border-blue-100 bg-blue-50 p-3 flex items-center gap-3">
+                    <button type="button" onclick="toggleVoiceRecognition()" aria-label="Falar próxima etapa" class="w-11 h-11 shrink-0 rounded-xl bg-blue-600 text-white shadow flex items-center justify-center"><i class="fa-solid fa-microphone"></i></button>
+                    <div class="min-w-0"><p id="modal-voice-status" aria-live="polite" class="text-xs font-bold text-blue-900">Fale cada campo por etapa usando o microfone.</p><p id="modal-transcript" class="text-[11px] text-slate-500 truncate">Nome → telefone → endereço → serviço → item e valor</p></div>
+                </div>
                 
                 <!-- Client Info -->
                 <div class="space-y-3">
@@ -417,10 +430,19 @@
     <!-- JAVASCRIPT APP LOGIC -->
     <script>
         // State Management
-        let quotes = JSON.parse(localStorage.getItem('ar_orcamentos') || '[]');
+        let quotes = [];
+        try { quotes = JSON.parse(localStorage.getItem('ar_orcamentos') || '[]'); } catch (error) { console.warn('Histórico local inválido.', error); }
         let currentActiveQuote = null;
         let recognition = null;
         let isListening = false;
+        let voiceStep = 0;
+        const voiceSteps = [
+            { field: 'client-name', prompt: 'Etapa 1 de 5: fale o nome do cliente e toque no microfone.' },
+            { field: 'client-phone', prompt: 'Etapa 2 de 5: fale o telefone de contato e toque no microfone.' },
+            { field: 'client-address', prompt: 'Etapa 3 de 5: fale o endereço da instalação e toque no microfone.' },
+            { field: 'service-desc', prompt: 'Etapa 4 de 5: fale o aparelho e o serviço. Toque no microfone.' },
+            { field: 'voice-item', prompt: 'Etapa 5 de 5: fale um item e seu valor, por exemplo: tubo de cobre, 180 reais.' }
+        ];
 
         // Init on Load
         window.onload = function() {
@@ -428,6 +450,7 @@
             renderHistory();
             updateStats();
             initSpeechRecognition();
+            if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./service-worker.js').catch(error => console.warn('Service worker não registrado:', error));
         };
 
         function updateHeaderDate() {
@@ -476,7 +499,8 @@
                     isListening = true;
                     document.getElementById('mic-btn').classList.add('bg-blue-50', 'ring-4', 'ring-blue-300');
                     document.getElementById('mic-ring').classList.remove('hidden');
-                    document.getElementById('mic-status').textContent = "Ouvindo... Fale o serviço e materiais";
+                    document.getElementById('mic-status').textContent = voiceSteps[voiceStep]?.prompt || 'Ouvindo...';
+                    document.getElementById('modal-voice-status').textContent = voiceSteps[voiceStep]?.prompt || 'Ouvindo...';
                     document.getElementById('transcript-box').classList.remove('hidden');
                 };
 
@@ -487,8 +511,8 @@
                     }
                     document.getElementById('transcript-text').textContent = transcript;
                     
-                    if (event.results[0].isFinal) {
-                        parseVoiceTranscript(transcript);
+                    if (event.results[event.results.length - 1].isFinal) {
+                        acceptVoiceStep(transcript.trim());
                     }
                 };
 
@@ -514,6 +538,7 @@
                 recognition.stop();
             } else {
                 try {
+                    openQuoteModal();
                     recognition.start();
                 } catch(e) {
                     recognition.stop();
@@ -525,7 +550,42 @@
             isListening = false;
             document.getElementById('mic-btn').classList.remove('bg-blue-50', 'ring-4', 'ring-blue-300');
             document.getElementById('mic-ring').classList.add('hidden');
-            document.getElementById('mic-status').textContent = "Toque para falar o serviço";
+            document.getElementById('mic-status').textContent = voiceSteps[voiceStep]?.prompt || 'Dados por voz preenchidos. Confira e complete os itens.';
+            document.getElementById('modal-voice-status').textContent = voiceSteps[voiceStep]?.prompt || 'Dados preenchidos. Confira os itens e salve.';
+        }
+
+        function acceptVoiceStep(text) {
+            if (!text) return;
+            const step = voiceSteps[voiceStep];
+            if (step?.field === 'voice-item') {
+                const match = text.match(/(.+?)(?:[,;]\s*)?(\d+(?:[.,]\d{1,2})?)\s*(?:reais|real|r\$)?$/i);
+                const firstRow = document.querySelector('.item-row');
+                if (firstRow && !firstRow.querySelector('.item-desc').value && !firstRow.querySelector('.item-price').value) {
+                    firstRow.querySelector('.item-desc').value = match ? match[1].trim() : text;
+                    firstRow.querySelector('.item-price').value = match ? Number(match[2].replace(',', '.')) : 0;
+                } else {
+                    addItemRowWithData(match ? match[1].trim() : text, match ? Number(match[2].replace(',', '.')) : 0);
+                }
+                calculateTotal();
+            } else if (step) {
+                document.getElementById(step.field).value = text;
+            }
+            voiceStep++;
+            const draft = { voiceStep };
+            ['client-name', 'client-phone', 'client-address', 'service-desc'].forEach(id => draft[id] = document.getElementById(id).value);
+            draft.items = [...document.querySelectorAll('.item-row')].map(row => ({ desc: row.querySelector('.item-desc').value, price: row.querySelector('.item-price').value }));
+            localStorage.setItem('ar_orcamento_rascunho', JSON.stringify(draft));
+            document.getElementById('transcript-text').textContent = text;
+            document.getElementById('modal-transcript').textContent = `Reconhecido: ${text}`;
+            if (voiceStep < voiceSteps.length) {
+                document.getElementById('mic-status').textContent = voiceSteps[voiceStep].prompt;
+                document.getElementById('modal-voice-status').textContent = voiceSteps[voiceStep].prompt;
+                showToast(`Etapa ${voiceStep} de 5 salva. ${voiceSteps[voiceStep].prompt}`);
+            } else {
+                document.getElementById('mic-status').textContent = 'Tudo preenchido. Confira e salve seu orçamento.';
+                document.getElementById('modal-voice-status').textContent = 'Tudo preenchido. Confira os dados e salve seu orçamento.';
+                showToast('Dados por voz preenchidos. Confira os valores e salve.');
+            }
         }
 
         // Smart Voice Parser (Extracts items & client info automatically)
@@ -603,6 +663,22 @@
         // Quote Modal Functions
         function openQuoteModal() {
             document.getElementById('quote-modal').classList.remove('hidden');
+            try {
+                const draft = JSON.parse(localStorage.getItem('ar_orcamento_rascunho') || 'null');
+                if (draft) {
+                    ['client-name', 'client-phone', 'client-address', 'service-desc'].forEach(id => {
+                        const field = document.getElementById(id);
+                        if (!field.value && draft[id]) field.value = draft[id];
+                    });
+                    if (draft.voiceStep != null) voiceStep = draft.voiceStep;
+                    if (draft.items?.length) {
+                        const container = document.getElementById('items-container');
+                        container.innerHTML = '';
+                        draft.items.forEach(item => addItemRowWithData(item.desc, item.price));
+                        calculateTotal();
+                    }
+                }
+            } catch (error) { console.warn('Rascunho local inválido.', error); }
             // Reset if clean
             if(document.querySelectorAll('.item-row').length === 0) {
                 addItemRow();
@@ -663,7 +739,8 @@
 
         // Save & Generate Quote
         function saveAndGenerateQuote() {
-            const clientName = document.getElementById('client-name').value.trim() || "Cliente Geral";
+            const clientName = document.getElementById('client-name').value.trim();
+            if (!clientName) { showToast('Informe o nome do cliente para salvar o orçamento.'); document.getElementById('client-name').focus(); return; }
             const clientPhone = document.getElementById('client-phone').value.trim() || "(00) 00000-0000";
             const clientAddress = document.getElementById('client-address').value.trim() || "Endereço não informado";
             const serviceDesc = document.getElementById('service-desc').value.trim() || "Instalação de Ar-Condicionado Split";
@@ -683,6 +760,12 @@
             
             quotes.unshift(quoteObj);
             localStorage.setItem('ar_orcamentos', JSON.stringify(quotes));
+            localStorage.removeItem('ar_orcamento_rascunho');
+            voiceStep = 0;
+            ['client-name', 'client-phone', 'client-address', 'service-desc'].forEach(fieldId => document.getElementById(fieldId).value = '');
+            document.getElementById('items-container').innerHTML = '';
+            addItemRow();
+            calculateTotal();
 
             closeQuoteModal();
             renderHistory();
@@ -856,65 +939,64 @@
         }
 
         function generatePDF(quote) {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            // Header banner
-            doc.setFillColor(15, 23, 42); // slate-900
-            doc.rect(0, 0, 210, 35, 'F');
-            
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(16);
-            doc.setFont('inter', 'bold');
-            doc.text("AR NO PREÇO CERTO", 14, 20);
-            
-            doc.setFontSize(10);
-            doc.text(`Orçamento: ${quote.id} | Data: ${quote.date}`, 14, 27);
-
-            // Client Info
-            doc.setTextColor(30, 41, 59);
-            doc.setFontSize(12);
-            doc.text("Dados do Cliente", 14, 48);
-            
-            doc.setFontSize(10);
-            doc.setFont('inter', 'normal');
-            doc.text(`Cliente: ${quote.clientName}`, 14, 56);
-            doc.text(`Telefone: ${quote.clientPhone}`, 14, 63);
-            doc.text(`Endereço: ${quote.clientAddress}`, 14, 70);
-            doc.text(`Serviço / Aparelho: ${quote.serviceDesc}`, 14, 77);
-
-            // Table Header
-            doc.setFillColor(241, 245, 249);
-            doc.rect(14, 87, 182, 8, 'F');
-            doc.setFont('inter', 'bold');
-            doc.text("Descrição do Item / Material", 18, 93);
-            doc.text("Valor (R$)", 165, 93);
-
-            // Items loop
-            let y = 103;
-            doc.setFont('inter', 'normal');
-            quote.items.forEach(item => {
-                doc.text(item.desc, 18, y);
-                doc.text(`R$ ${item.price.toFixed(2)}`, 165, y);
-                y += 8;
+            if (!window.jspdf?.jsPDF) { showToast('Biblioteca de PDF indisponível. Verifique sua conexão e tente novamente.'); return; }
+            const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 16;
+            const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const text = value => String(value || '—');
+            const addHeader = () => {
+                doc.setFillColor(15, 23, 42); doc.rect(0, 0, pageWidth, 38, 'F');
+                doc.setFillColor(37, 99, 235); doc.roundedRect(margin, 9, 12, 12, 3, 3, 'F');
+                doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+                doc.text('AR NO PREÇO CERTO', margin + 17, 16);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+                doc.text(`ORÇAMENTO  ${text(quote.id)}   •   ${text(quote.date)}`, margin + 17, 24);
+                doc.setTextColor(30, 41, 59);
+            };
+            addHeader();
+            let y = 50;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(37, 99, 235);
+            doc.text('DADOS DO CLIENTE', margin, y); y += 7;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(51, 65, 85);
+            const info = [ ['Cliente', quote.clientName], ['Telefone', quote.clientPhone], ['Endereço da instalação', quote.clientAddress], ['Serviço / aparelho', quote.serviceDesc] ];
+            info.forEach(([label, value]) => {
+                const lines = doc.splitTextToSize(`${label}: ${text(value)}`, pageWidth - margin * 2);
+                if (y + lines.length * 5 > pageHeight - 24) { doc.addPage(); addHeader(); y = 50; }
+                doc.text(lines, margin, y); y += lines.length * 5 + 1;
             });
-
-            // Total box
             y += 5;
-            doc.setFillColor(239, 246, 255);
-            doc.rect(14, y, 182, 14, 'F');
-            doc.setFont('inter', 'bold');
-            doc.setTextColor(37, 99, 235);
-            doc.text("VALOR TOTAL DO ORÇAMENTO:", 18, y + 9);
-            doc.text(`R$ ${quote.total.toFixed(2)}`, 160, y + 9);
-
-            // Footer
-            doc.setFontSize(8);
-            doc.setTextColor(100, 116, 139);
-            doc.text("Gerado por Ar no Preço Certo - Aplicativo para Técnicos de Ar-Condicionado", 14, 280);
-
-            doc.save(`Orcamento_${quote.clientName.replace(/\s+/g, '_')}_${quote.id}.pdf`);
-            showToast("PDF baixado com sucesso!");
+            const drawTableHeader = () => {
+                doc.setFillColor(241, 245, 249); doc.roundedRect(margin, y, pageWidth - margin * 2, 10, 2, 2, 'F');
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(51, 65, 85);
+                doc.text('DESCRIÇÃO', margin + 4, y + 6.5); doc.text('VALOR', pageWidth - margin - 4, y + 6.5, { align: 'right' });
+                y += 14;
+            };
+            drawTableHeader();
+            (quote.items || []).forEach(item => {
+                const lines = doc.splitTextToSize(text(item.desc), pageWidth - margin * 2 - 52);
+                const rowHeight = Math.max(9, lines.length * 5 + 4);
+                if (y + rowHeight > pageHeight - 32) { doc.addPage(); addHeader(); y = 50; drawTableHeader(); }
+                doc.setDrawColor(226, 232, 240); doc.line(margin, y + rowHeight, pageWidth - margin, y + rowHeight);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(51, 65, 85);
+                doc.text(lines, margin + 4, y + 5); doc.text(money(item.price), pageWidth - margin - 4, y + 5, { align: 'right' });
+                y += rowHeight;
+            });
+            if (y + 20 > pageHeight - 22) { doc.addPage(); addHeader(); y = 50; }
+            y += 7; doc.setFillColor(239, 246, 255); doc.roundedRect(margin, y, pageWidth - margin * 2, 16, 3, 3, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 64, 175); doc.setFontSize(11);
+            doc.text('TOTAL DO ORÇAMENTO', margin + 5, y + 10); doc.text(money(quote.total), pageWidth - margin - 5, y + 10, { align: 'right' });
+            const pages = doc.getNumberOfPages();
+            for (let page = 1; page <= pages; page++) {
+                doc.setPage(page); doc.setDrawColor(226, 232, 240); doc.line(margin, pageHeight - 16, pageWidth - margin, pageHeight - 16);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 116, 139);
+                doc.text('Ar no Preço Certo • Orçamento de serviços de climatização', margin, pageHeight - 10);
+                doc.text(`${page} / ${pages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+            }
+            const safeName = text(quote.clientName).normalize('NFD').replace(/\p{M}/gu, '').replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 40);
+            doc.save(`Orcamento_${safeName}_${text(quote.id)}.pdf`);
+            showToast('PDF profissional baixado com sucesso!');
         }
 
         // WhatsApp Sharing
