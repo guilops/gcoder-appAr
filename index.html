@@ -135,7 +135,7 @@
                     </div>
 
                     <h2 class="text-xl font-extrabold mb-1">Dite o orçamento inteiro de uma vez.</h2>
-                    <p class="text-xs text-blue-100 mb-6">Fale nome, telefone, endereço, serviço e itens com valores. O app preenche após uma pausa.</p>
+                    <p class="text-xs text-blue-100 mb-6">Fale nome, telefone, endereço, serviço e itens com valores. Toque em parar para preencher.</p>
 
                     <!-- Big Mic Button -->
                     <div class="flex flex-col items-center justify-center my-4">
@@ -144,11 +144,6 @@
                             <div id="mic-ring" class="absolute inset-0 rounded-full border-4 border-white/50 hidden"></div>
                         </button>
                         <span id="mic-status" aria-live="polite" class="text-xs font-semibold text-blue-100 mt-3">Toque para começar a falar</span>
-                    </div>
-
-                    <!-- Voice Transcript Box -->
-                    <div id="transcript-box" class="hidden bg-blue-900/60 backdrop-blur-md p-3 rounded-xl border border-blue-400/30 text-xs text-blue-100 mb-4 max-h-24 overflow-y-auto">
-                        <span class="font-bold text-amber-300">Ouvindo:</span> <span id="transcript-text">Aguardando voz...</span>
                     </div>
 
                     <!-- Manual Button -->
@@ -278,7 +273,7 @@
 
                 <div class="rounded-2xl border border-blue-100 bg-blue-50 p-3 flex items-center gap-3">
                     <button type="button" onclick="toggleVoiceRecognition()" id="modal-mic-btn" aria-label="Começar a ditar orçamento" class="w-11 h-11 shrink-0 rounded-xl bg-blue-600 text-white shadow flex items-center justify-center"><i class="fa-solid fa-microphone"></i></button>
-                    <div class="min-w-0 flex-1"><p id="modal-voice-status" aria-live="polite" class="text-xs font-bold text-blue-900">Dite o orçamento completo. Preencho após 2,5 segundos sem fala.</p><p id="modal-transcript" aria-live="polite" class="text-[11px] text-slate-500 max-h-20 overflow-y-auto">A transcrição completa aparecerá aqui.</p></div>
+                    <div class="min-w-0 flex-1"><p id="modal-voice-status" aria-live="polite" class="text-xs font-bold text-blue-900">Dite o orçamento completo. Toque em parar para preencher os campos.</p><p id="modal-transcript" class="hidden text-[11px] text-slate-500"></p></div>
                     <button type="button" id="finish-voice-btn" onclick="finishVoiceRecognition()" disabled class="shrink-0 rounded-xl bg-rose-600 px-3 py-2 text-[11px] font-bold text-white opacity-50 disabled:cursor-not-allowed">Parar e preencher</button>
                 </div>
                 
@@ -437,7 +432,8 @@
         let recognition = null;
         let isListening = false;
         let voiceTranscript = '';
-        let voiceSilenceTimer = null;
+        let voiceSessionPrefix = '';
+        let voiceFinalizeRequested = false;
 
         // Init on Load
         window.onload = function() {
@@ -494,18 +490,14 @@
                 document.getElementById('mic-btn').classList.add('bg-blue-50', 'ring-4', 'ring-blue-300');
                 document.getElementById('mic-ring').classList.remove('hidden');
                 document.getElementById('mic-status').textContent = 'Ouvindo tudo. Toque em Parar e preencher quando terminar.';
-                document.getElementById('modal-voice-status').textContent = 'Ouvindo tudo. Preencho automaticamente após 2,5 segundos sem fala.';
+                document.getElementById('modal-voice-status').textContent = 'Ouvindo. Toque em Parar e preencher quando terminar de falar.';
                 document.getElementById('modal-mic-btn').classList.add('bg-rose-600');
                 document.getElementById('finish-voice-btn').disabled = false;
                 document.getElementById('finish-voice-btn').classList.remove('opacity-50');
-                document.getElementById('transcript-box').classList.remove('hidden');
             };
             recognition.onresult = function(event) {
-                voiceTranscript = Array.from(event.results).map(result => result[0].transcript).join(' ').replace(/\s+/g, ' ').trim();
-                document.getElementById('transcript-text').textContent = voiceTranscript || 'Ouvindo...';
-                document.getElementById('modal-transcript').textContent = voiceTranscript || 'Ouvindo...';
-                clearTimeout(voiceSilenceTimer);
-                voiceSilenceTimer = setTimeout(finishVoiceRecognition, 2500);
+                const sessionText = Array.from(event.results).map(result => result[0].transcript).join(' ').replace(/\s+/g, ' ').trim();
+                voiceTranscript = [voiceSessionPrefix, sessionText].filter(Boolean).join(' ').trim();
             };
             recognition.onerror = function(event) {
                 if (event.error !== 'no-speech' && event.error !== 'aborted') {
@@ -533,7 +525,6 @@
             try {
                 openQuoteModal();
                 voiceTranscript = '';
-                document.getElementById('modal-transcript').textContent = 'Aguardando sua fala...';
                 recognition.start();
             } catch (error) {
                 showToast('Não foi possível iniciar o microfone. Verifique a permissão do navegador.');
@@ -541,12 +532,10 @@
         }
 
         function finishVoiceRecognition() {
-            clearTimeout(voiceSilenceTimer);
             if (recognition && isListening) recognition.stop();
         }
 
         function stopVoiceRecognition() {
-            clearTimeout(voiceSilenceTimer);
             isListening = false;
             document.getElementById('mic-btn').classList.remove('bg-blue-50', 'ring-4', 'ring-blue-300');
             document.getElementById('mic-ring').classList.add('hidden');
@@ -564,8 +553,8 @@
                 /\b(?:meu nome (?:e|eh)|me chamo|nome(?: do cliente)?(?: e| eh)?|cliente(?: e| eh)?|orcamento para)\s*[:, -]?/i,
                 /\b(?:telefone|celular|whatsapp|whats|numero)\s*(?:e|eh|:)?\s*/i,
                 /\b(?:endereco|local(?: da instalacao)?|rua|avenida|av\.)\s*(?:e|eh|:)?\s*/i,
-                /\b(?:servico|aparelho|instalacao de|ar condicionado|split|inverter)\s*(?:e|eh|:)?\s*/i,
-                /\b(?:materiais?|itens?|pecas?|mao de obra)\s*[:, -]?/i
+                /\b(?:descricao(?: do servico| do aparelho| do ar)?|servico|aparelho|instalacao de|ar condicionado|split|inverter)\s*(?:e|eh|:)?\s*/i,
+                /\b(?:materiais?|material|itens?|pecas?|mao(?: de)? obra|mao de obra)\s*[:, -]?/i
             ];
             function nextMarkerIndex(from) {
                 let end = normalized.length;
@@ -593,8 +582,8 @@
             const nameMarker = /\b(?:meu nome (?:e|eh)|me chamo|nome(?: do cliente)?(?: e| eh)?|cliente(?: e| eh)?|orcamento para)\s*[:, -]?/i;
             const phoneMarker = /\b(?:telefone|celular|whatsapp|whats|numero)\s*(?:e|eh|:)?\s*/i;
             const addressMarker = /\b(?:endereco|local(?: da instalacao)?|rua|avenida|av\.)\s*(?:e|eh|:)?\s*/i;
-            const serviceMarker = /\b(?:servico|aparelho|instalacao de|ar condicionado|split|inverter)\s*(?:e|eh|:)?\s*/i;
-            const itemMarker = /\b(?:materiais?|itens?|pecas?|mao de obra)\s*[:, -]?/i;
+            const serviceMarker = /\b(?:descricao(?: do servico| do aparelho| do ar)?|servico|aparelho|instalacao de|ar condicionado|split|inverter)\s*(?:e|eh|:)?\s*/i;
+            const itemMarker = /\b(?:materiais?|material|itens?|pecas?|mao(?: de)? obra|mao de obra)\s*[:, -]?/i;
             const nameStops = [phoneMarker, addressMarker, serviceMarker, itemMarker];
             let clientName = section(nameMarker, nameStops);
             if (!clientName) {
@@ -604,7 +593,7 @@
             const phoneText = section(phoneMarker, [addressMarker, serviceMarker, itemMarker]);
             const phoneDigits = (phoneText.match(/\+?\d[\d\s().-]{7,}\d/) || [])[0] || '';
             const address = section(addressMarker, [phoneMarker, serviceMarker, itemMarker]);
-            let service = section(serviceMarker, [phoneMarker, addressMarker, itemMarker]);
+            let service = section(serviceMarker, [phoneMarker, addressMarker, itemMarker]).replace(/^(?:(?:de|do|da|e|eh|o|a|aparelho|servico)\s+)+/i, '');
             if (!service) {
                 const serviceStart = normalized.search(/\b(?:ar condicionado|split|inverter)\b/i);
                 if (serviceStart >= 0) service = original.slice(serviceStart, nextMarkerIndex(serviceStart)).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
@@ -612,7 +601,7 @@
             const firstServiceMarker = serviceMarker.exec(normalized);
             if (firstServiceMarker && /^instalacao de/i.test(firstServiceMarker[0])) service = 'Instalação de ' + service;
 
-            const amountPattern = /(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?|(?:zero|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil)(?:\s+(?:e\s+)?(?:um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil))*)\s*(?:reais?|r\$)/gi;
+            const amountPattern = /(?:r\$\s*(\d+(?:[.,]\d{1,2})?|(?:zero|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil)(?:\s+(?:e\s+)?(?:um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil))*))|((?:\d+(?:[.,]\d{1,2})?|(?:zero|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil)(?:\s+(?:e\s+)?(?:um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil))*))\s*(?:reais?|r\$)?(?=\s*(?:[,;]|$|e?\s*(?:mao(?: de)? obra|materiais?|itens?)))/gi;
             function spokenNumber(value) {
                 if (/^\d/.test(value)) return Number(value.replace(',', '.'));
                 const values = { zero:0, um:1, uma:1, dois:2, duas:2, tres:3, quatro:4, cinco:5, seis:6, sete:7, oito:8, nove:9, dez:10, onze:11, doze:12, treze:13, quatorze:14, catorze:14, quinze:15, dezesseis:16, dezessete:17, dezoito:18, dezenove:19, vinte:20, trinta:30, quarenta:40, cinquenta:50, sessenta:60, setenta:70, oitenta:80, noventa:90, cem:100, cento:100, duzentos:200, trezentos:300, quatrocentos:400, quinhentos:500, seiscentos:600, setecentos:700, oitocentos:800, novecentos:900 };
@@ -625,13 +614,16 @@
             }
             const itemMatches = [];
             let itemStart = normalized.search(itemMarker);
+            // Fallback: se nao encontrou marcador de item, busca valores apos o campo de servico
+            if (itemStart < 0) { const _svcM = new RegExp(serviceMarker.source, 'i').exec(normalized); if (_svcM) itemStart = _svcM.index + _svcM[0].length; }
             amountPattern.lastIndex = 0;
             let amount;
             while ((amount = amountPattern.exec(normalized)) !== null) {
-                if (itemStart < 0) itemStart = amount.index;
+                if (itemStart < 0 || amount.index < itemStart) continue;
                 const from = Math.max(itemStart, itemMatches.length ? itemMatches[itemMatches.length - 1].end : itemStart);
-                let desc = original.slice(from, amount.index).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').replace(/^(?:(?:e|tambem|material|materiais|item|itens|pecas)\s*:?[\s]*)+/i, '').replace(/\s+(?:por|a)\s*$/i, '').trim();
-                if (desc) itemMatches.push({ desc, price: spokenNumber(amount[1]), end: amountPattern.lastIndex });
+                let desc = original.slice(from, amount.index).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').replace(/^(?:(?:e|tambem|material|materiais|item|itens|pecas|descricao|servico|aparelho)\s*:?\s*)+/i, '').replace(/\s+(?:por|a)\s*$/i, '').trim();
+                const amountValue = amount[1] || amount[2]?.replace(/\s*(?:reais?|r\$)$/i, '').trim();
+                if (desc && amountValue) itemMatches.push({ desc, price: spokenNumber(amountValue), end: amountPattern.lastIndex });
             }
             const items = itemMatches.map(({ desc, price }) => ({ desc, price }));
             const container = document.getElementById('items-container');
