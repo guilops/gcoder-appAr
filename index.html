@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ar no Preço Certo</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- jsPDF para Geração de Orçamento em PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#0f172a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        .mic-pulsing { animation: pulse-ring 2s infinite; }
+    </style>
+</head>
+<body class="h-full flex justify-center items-center bg-slate-900 text-slate-800">
+
+    <!-- Mobile Container Wrapper -->
+    <div class="w-full max-w-md h-full sm:h-[90vh] sm:rounded-3xl bg-slate-50 shadow-2xl flex flex-col overflow-hidden relative border border-slate-800">
+
+        <!-- Top Header Bar -->
+        <header class="bg-white px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100 sticky top-0 z-30">
+            <div class="flex items-center space-x-2">
+                <div class="bg-blue-600 text-white p-2 rounded-xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-snowflake text-lg"></i>
+                </div>
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-blue-600">Ar no Preço Certo</span>
+                    <h1 class="text-sm font-extrabold text-slate-800" id="header-greeting">Bom dia, Técnico</h1>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="openInstallGuide()" class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-blue-100 transition shadow-sm flex items-center gap-1">
+                    <i class="fa-solid fa-mobile-screen"></i> App
+                </button>
+                <div class="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shadow-md border-2 border-blue-500">
+                    AR
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-4 space-y-4 pb-24 hide-scrollbar" id="main-content">
+            
+            <!-- Date & Banner Card -->
+            <div class="space-y-1">
+                <p class="text-xs text-slate-500 font-medium capitalize" id="current-date-label">domingo, 15 de novembro</p>
+            </div>
+
+            <!-- Tabs / Navigation Pills -->
+            <div class="flex space-x-2 overflow-x-auto hide-scrollbar pb-1">
+                <button onclick="switchTab('home')" id="tab-home" class="px-4 py-2 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md shadow-blue-500/20 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-house"></i> Início
+                </button>
+                <button onclick="switchTab('history')" id="tab-history" class="px-4 py-2 rounded-full text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> Orçamentos (<span id="history-count">0</span>)
+                </button>
+                <button onclick="switchTab('scripts')" id="tab-scripts" class="px-4 py-2 rounded-full text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-bolt"></i> Scripts WhatsApp
+                </button>
+            </div>
+
+            <!-- HOME TAB VIEW -->
+            <div id="view-home" class="space-y-4">
+                
+                <!-- Agenda Cheia Banner 1 -->
+                <div class="bg-gradient-to-r from-slate-900 to-blue-900 text-white p-4 rounded-2xl shadow-xl relative overflow-hidden flex items-center justify-between">
+                    <div class="absolute right-0 top-0 bottom-0 w-24 bg-blue-500/10 rounded-full blur-2xl"></div>
+                    <div class="space-y-1 z-10 pr-2">
+                        <span class="bg-emerald-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Novo</span>
+                        <h2 class="text-base font-bold">Agenda Cheia</h2>
+                        <p class="text-xs text-slate-300">Feche mais orçamentos com scripts de atendimento prontos.</p>
+                    </div>
+                    <button onclick="switchTab('scripts')" class="bg-white text-slate-900 text-xs font-bold px-4 py-2 rounded-xl shadow hover:bg-blue-50 transition shrink-0 z-10">
+                        Ver <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+
+                <!-- Agenda Cheia Banner 2 (Extra) -->
+                <div class="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white p-4 rounded-2xl shadow-xl relative overflow-hidden flex items-center justify-between">
+                    <div class="space-y-1 z-10 pr-2">
+                        <span class="bg-amber-400 text-slate-900 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Seu Extra</span>
+                        <h2 class="text-base font-bold">Respostas para WhatsApp</h2>
+                        <p class="text-xs text-blue-200">Gere gatilhos mentais para responder clientes rápido.</p>
+                    </div>
+                    <button onclick="switchTab('scripts')" class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow hover:bg-blue-500 transition shrink-0 z-10 border border-blue-400">
+                        Abrir <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+
+                <!-- CARDS DE ORÇAMENTO POR ÁUDIO (O Coração do App) -->
+                <div class="bg-gradient-to-b from-blue-600 to-blue-700 text-white p-5 rounded-3xl shadow-xl relative overflow-hidden">
+                    <div class="absolute -right-8 -bottom-8 w-40 h-40 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+                    
+                    <div class="flex items-center space-x-2 text-blue-200 mb-2">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider">Orçamento por Áudio IA</span>
+                    </div>
+
+                    <h2 class="text-xl font-extrabold mb-1">Fala o serviço. O orçamento sai pronto.</h2>
+                    <p class="text-xs text-blue-100 mb-6">Material, mão de obra e total separados, em 1 minuto.</p>
+
+                    <!-- Big Mic Button -->
+                    <div class="flex flex-col items-center justify-center my-4">
+                        <button onclick="toggleVoiceRecognition()" id="mic-btn" class="w-24 h-24 bg-white text-blue-600 rounded-full shadow-2xl flex items-center justify-center text-3xl hover:bg-blue-50 active:scale-95 transition transform duration-150 relative">
+                            <i class="fa-solid fa-microphone" id="mic-icon"></i>
+                            <div id="mic-ring" class="absolute inset-0 rounded-full border-4 border-white/50 hidden"></div>
+                        </button>
+                        <span id="mic-status" class="text-xs font-semibold text-blue-100 mt-3">Toque para falar o serviço</span>
+                    </div>
+
+                    <!-- Voice Transcript Box -->
+                    <div id="transcript-box" class="hidden bg-blue-900/60 backdrop-blur-md p-3 rounded-xl border border-blue-400/30 text-xs text-blue-100 mb-4 max-h-24 overflow-y-auto">
+                        <span class="font-bold text-amber-300">Ouvindo:</span> <span id="transcript-text">Aguardando voz...</span>
+                    </div>
+
+                    <!-- Manual Button -->
+                    <div class="pt-2">
+                        <button onclick="openQuoteModal()" class="w-full bg-blue-800/80 hover:bg-blue-800 text-white py-3 rounded-2xl font-bold text-sm shadow border border-blue-400/30 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-pen-to-square"></i> Montar na mão
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Stats / Summary Card -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+                        <span class="text-xs text-slate-400 font-medium">Orçamentos Feitos</span>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <span class="text-2xl font-extrabold text-slate-800" id="stat-total-count">0</span>
+                            <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-arrow-up"></i> Ativo</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+                        <span class="text-xs text-slate-400 font-medium">Média por Serviço</span>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <span class="text-xl font-extrabold text-blue-600" id="stat-avg-value">R$ 0</span>
+                            <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Split</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- HISTORY TAB VIEW -->
+            <div id="view-history" class="space-y-3 hidden">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-extrabold text-slate-800 uppercase tracking-wider">Histórico de Orçamentos</h2>
+                    <button onclick="clearHistory()" class="text-xs text-rose-600 hover:underline font-semibold">Limpar Tudo</button>
+                </div>
+                
+                <!-- Search Filter -->
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400 text-xs"></i>
+                    <input type="text" id="search-history" oninput="filterHistory()" placeholder="Buscar por cliente ou serviço..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-blue-500 shadow-sm">
+                </div>
+
+                <div id="history-list" class="space-y-3">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- SCRIPTS TAB VIEW -->
+            <div id="view-scripts" class="space-y-3 hidden">
+                <h2 class="text-sm font-extrabold text-slate-800 uppercase tracking-wider">Scripts de Vendas WhatsApp</h2>
+                <p class="text-xs text-slate-500">Toque em qualquer script para copiar e enviar direto no WhatsApp do cliente.</p>
+
+                <div class="space-y-3">
+                    <!-- Script 1 -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Fechamento de Orçamento</span>
+                            <button onclick="copyScript(1)" class="text-xs text-slate-500 hover:text-blue-600 font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-copy"></i> Copiar
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-700 leading-relaxed" id="script-1">
+                            Olá [Nome], tudo bem? Segue o orçamento da instalação/manutenção do seu ar-condicionado. Trabalhamos com peças de primeira linha e garantia de serviço. Podemos confirmar a data para esta semana? 🛠️❄️
+                        </p>
+                    </div>
+
+                    <!-- Script 2 -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Manutenção Preventiva</span>
+                            <button onclick="copyScript(2)" class="text-xs text-slate-500 hover:text-blue-600 font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-copy"></i> Copiar
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-700 leading-relaxed" id="script-2">
+                            Olá [Nome]! Passando para lembrar que o ar-condicionado precisa de higienização preventiva a cada 6 meses para garantir a saúde da família e economizar energia. Gostaria de agendar uma limpeza essa semana com desconto? 🧼🌬️
+                        </p>
+                    </div>
+
+                    <!-- Script 3 -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Acompanhamento</span>
+                            <button onclick="copyScript(3)" class="text-xs text-slate-500 hover:text-blue-600 font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-copy"></i> Copiar
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-700 leading-relaxed" id="script-3">
+                            Olá [Nome], conseguiu dar uma olhada no orçamento que te mandei mais cedo? Fico à disposição caso tenha alguma dúvida sobre os materiais ou parcelamento! 👍
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Floating Action Button for New Quote -->
+        <div class="absolute bottom-5 right-5 z-20">
+            <button onclick="openQuoteModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-full shadow-2xl flex items-center space-x-2 text-sm font-bold border-2 border-white/20 transition active:scale-95">
+                <i class="fa-solid fa-microphone"></i>
+                <span>Novo orçamento</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- QUOTE FORM MODAL / BUILDER -->
+    <div id="quote-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+        <div class="bg-white w-full max-w-lg max-h-[90vh] sm:rounded-3xl rounded-t-3xl overflow-hidden flex flex-col shadow-2xl animate-in fade-in slide-in-from-bottom duration-200">
+            
+            <!-- Modal Header -->
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center space-x-2">
+                    <div class="bg-blue-600 text-white w-7 h-7 rounded-lg flex items-center justify-center text-xs">
+                        <i class="fa-solid fa-calculator"></i>
+                    </div>
+                    <h3 class="text-sm font-extrabold text-slate-800">Montar Orçamento</h3>
+                </div>
+                <button onclick="closeQuoteModal()" class="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-300 transition text-xs">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-5 overflow-y-auto space-y-4 flex-1">
+                
+                <!-- Client Info -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">1. Dados do Cliente</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1">Nome do Cliente</label>
+                            <input type="text" id="client-name" placeholder="Ex: João da Silva" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1">WhatsApp / Telefone</label>
+                            <input type="text" id="client-phone" placeholder="Ex: (11) 99999-9999" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Endereço / Local da Instalação</label>
+                        <input type="text" id="client-address" placeholder="Ex: Rua das Flores, 123 - Apto 42" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <!-- Service Description & Equipment -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">2. Descrição do Aparelho e Serviço</h4>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Aparelho / Capacidade (BTUs)</label>
+                        <input type="text" id="service-desc" placeholder="Ex: Ar Split Inverter 12000 BTUs" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <!-- Items breakdown (Materials & Labor) -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">3. Materiais e Mão de Obra</h4>
+                        <button onclick="addItemRow()" class="text-xs font-bold text-blue-600 hover:underline">+ Adicionar Item</button>
+                    </div>
+
+                    <div id="items-container" class="space-y-2">
+                        <!-- Item row template -->
+                        <div class="flex items-center space-x-2 item-row">
+                            <input type="text" placeholder="Ex: Tubo de Cobre 1/4 + Cabo PP" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs item-desc focus:outline-none focus:border-blue-500">
+                            <input type="number" placeholder="Valor R$" oninput="calculateTotal()" class="w-24 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs item-price focus:outline-none focus:border-blue-500">
+                            <button onclick="removeItemRow(this)" class="w-8 h-8 text-rose-500 hover:bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Calculation Box -->
+                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-medium text-blue-600 block">Valor Total do Orçamento</span>
+                        <span class="text-[10px] text-slate-500">Inclui materiais e mão de obra</span>
+                    </div>
+                    <div class="text-xl font-extrabold text-blue-700" id="modal-total-display">R$ 0,00</div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex items-center space-x-3">
+                <button onclick="closeQuoteModal()" class="w-1/2 bg-white border border-slate-200 text-slate-700 py-3 rounded-2xl font-bold text-xs hover:bg-slate-100 transition">
+                    Cancelar
+                </button>
+                <button onclick="saveAndGenerateQuote()" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-file-pdf"></i> Salvar e Gerar PDF
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- SUCCESS / VIEW QUOTE MODAL -->
+    <div id="result-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+        <div class="bg-white w-full max-w-lg max-h-[90vh] sm:rounded-3xl rounded-t-3xl overflow-hidden flex flex-col shadow-2xl animate-in fade-in slide-in-from-bottom duration-200">
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-blue-600 text-white">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+                    <h3 class="text-sm font-extrabold">Orçamento Pronto!</h3>
+                </div>
+                <button onclick="closeResultModal()" class="w-8 h-8 rounded-full bg-blue-700 text-white flex items-center justify-center hover:bg-blue-800 transition text-xs">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="p-5 overflow-y-auto space-y-4 flex-1 text-xs" id="receipt-preview-content">
+                <!-- Receipt content populated dynamically -->
+            </div>
+
+            <div class="p-4 border-t border-slate-100 bg-slate-50 grid grid-cols-2 gap-2">
+                <button onclick="downloadPDFFromModal()" class="bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-2xl font-bold text-xs shadow transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-download"></i> Baixar PDF
+                </button>
+                <button onclick="sendWhatsAppFromModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-2xl font-bold text-xs shadow transition flex items-center justify-center gap-1.5">
+                    <i class="fa-brands fa-whatsapp text-sm"></i> Enviar WhatsApp
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- INSTALL / APK GUIDE MODAL -->
+    <div id="install-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+        <div class="bg-white w-full max-w-lg max-h-[90vh] sm:rounded-3xl rounded-t-3xl overflow-hidden flex flex-col shadow-2xl animate-in fade-in slide-in-from-bottom duration-200">
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-mobile-screen text-blue-400 text-base"></i>
+                    <h3 class="text-sm font-extrabold">Como gerar o APK e Instalar</h3>
+                </div>
+                <button onclick="closeInstallGuide()" class="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center hover:bg-slate-700 transition text-xs">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-5 overflow-y-auto space-y-4 flex-1 text-xs text-slate-700 leading-relaxed">
+                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 space-y-2">
+                    <h4 class="font-bold text-blue-900 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-robot text-blue-600"></i> Quer enviar o arquivo .APK pronto para ele?
+                    </h4>
+                    <p class="text-slate-600">Como este é um aplicativo web profissional (PWA), você pode transformá-lo em um arquivo APK instalável em 1 minuto:</p>
+                </div>
+
+                <ol class="space-y-3 list-decimal pl-4 font-medium">
+                    <li>Hospede este arquivo HTML gratuitamente no <strong class="text-blue-600">Netlify Drop</strong> ou <strong class="text-blue-600">GitHub Pages</strong> para ter um link web.</li>
+                    <li>Acesse o site gratuito <strong class="text-slate-900">pwabuilder.com</strong> (da Microsoft).</li>
+                    <li>Cole o link do seu site lá e clique em <strong class="text-slate-900">"Generate"</strong>.</li>
+                    <li>O site vai criar o arquivo <strong class="text-blue-600">.APK</strong> pronto para você baixar e enviar para o WhatsApp do seu primo! Ele instala como qualquer aplicativo de loja.</li>
+                </ol>
+
+                <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-emerald-800 text-[11px]">
+                    💡 <strong>Alternativa Rápida (Sem APK):</strong> Se preferir, basta mandar o link direto do app para ele abrir no Chrome do celular, tocar nos 3 pontinhos e selecionar <strong>"Adicionar à tela inicial"</strong>. Funciona exatamente igual a um app nativo, salvando os orçamentos e gerando PDFs!
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-100 bg-slate-50">
+                <button onclick="closeInstallGuide()" class="w-full bg-blue-600 text-white py-3 rounded-2xl font-bold text-xs shadow hover:bg-blue-700 transition">
+                    Entendi, fechar guia
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-4 py-2 rounded-2xl text-xs font-bold shadow-2xl transition-all duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-msg">Ação realizada com sucesso!</span>
+    </div>
+
+    <!-- JAVASCRIPT APP LOGIC -->
+    <script>
+        // State Management
+        let quotes = JSON.parse(localStorage.getItem('ar_orcamentos') || '[]');
+        let currentActiveQuote = null;
+        let recognition = null;
+        let isListening = false;
+
+        // Init on Load
+        window.onload = function() {
+            updateHeaderDate();
+            renderHistory();
+            updateStats();
+            initSpeechRecognition();
+        };
+
+        function updateHeaderDate() {
+            const options = { weekday: 'long', day: 'numeric', month: 'long' };
+            const today = new Date().toLocaleDateString('pt-BR', options);
+            document.getElementById('current-date-label').textContent = today;
+            
+            // Random technician greeting simulation or user name
+            document.getElementById('header-greeting').textContent = "Bom dia, Técnico";
+        }
+
+        // Update Dashboard Stats & Counters
+        function updateStats() {
+            const count = quotes.length;
+            document.getElementById('history-count').textContent = count;
+            document.getElementById('stat-total-count').textContent = count;
+
+            if (count > 0) {
+                let totalSum = quotes.reduce((acc, q) => acc + q.total, 0);
+                let avg = totalSum / count;
+                document.getElementById('stat-avg-value').textContent = `R$ ${avg.toFixed(0)}`;
+            } else {
+                document.getElementById('stat-avg-value').textContent = `R$ 0`;
+            }
+        }
+
+        function switchTab(tabId) {
+            ['home', 'history', 'scripts'].forEach(t => {
+                document.getElementById('view-' + t).classList.add('hidden');
+                document.getElementById('tab-' + t).className = "px-4 py-2 rounded-full text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition flex items-center gap-1.5";
+            });
+            document.getElementById('view-' + tabId).classList.remove('hidden');
+            document.getElementById('tab-' + tabId).className = "px-4 py-2 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md shadow-blue-500/20 transition flex items-center gap-1.5";
+        }
+
+        // Voice Recognition Setup (Web Speech API)
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.lang = 'pt-BR';
+                recognition.continuous = false;
+                recognition.interimResults = true;
+
+                recognition.onstart = function() {
+                    isListening = true;
+                    document.getElementById('mic-btn').classList.add('bg-blue-50', 'ring-4', 'ring-blue-300');
+                    document.getElementById('mic-ring').classList.remove('hidden');
+                    document.getElementById('mic-status').textContent = "Ouvindo... Fale o serviço e materiais";
+                    document.getElementById('transcript-box').classList.remove('hidden');
+                };
+
+                recognition.onresult = function(event) {
+                    let transcript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        transcript += event.results[i][0].transcript;
+                    }
+                    document.getElementById('transcript-text').textContent = transcript;
+                    
+                    if (event.results[0].isFinal) {
+                        parseVoiceTranscript(transcript);
+                    }
+                };
+
+                recognition.onerror = function(event) {
+                    stopVoiceRecognition();
+                    showToast("Erro no reconhecimento de voz. Tente novamente.");
+                };
+
+                recognition.onend = function() {
+                    stopVoiceRecognition();
+                };
+            }
+        }
+
+        function toggleVoiceRecognition() {
+            if (!recognition) {
+                showToast("Seu navegador não suporta reconhecimento de voz. Use o botão 'Montar na mão'.");
+                openQuoteModal();
+                return;
+            }
+
+            if (isListening) {
+                recognition.stop();
+            } else {
+                try {
+                    recognition.start();
+                } catch(e) {
+                    recognition.stop();
+                }
+            }
+        }
+
+        function stopVoiceRecognition() {
+            isListening = false;
+            document.getElementById('mic-btn').classList.remove('bg-blue-50', 'ring-4', 'ring-blue-300');
+            document.getElementById('mic-ring').classList.add('hidden');
+            document.getElementById('mic-status').textContent = "Toque para falar o serviço";
+        }
+
+        // Smart Voice Parser (Extracts items & client info automatically)
+        function parseVoiceTranscript(text) {
+            stopVoiceRecognition();
+            
+            const lower = text.toLowerCase();
+            let name = "";
+            let phone = "";
+            let address = "";
+            let service = text;
+            let extractedItems = [];
+
+            // Intelligent parsing heuristics for Portuguese speech
+            // Extract Name
+            const nameMatch = text.match(/(?:nome(?:\s+é)?|cliente)\s+([a-zA-ZÀ-ÿ\s]+?)(?:,\s*(?:telefone|celular|número|endereço|local|aparelho|serviço)|$)/i);
+            if (nameMatch && nameMatch[1]) {
+                name = nameMatch[1].trim();
+            }
+
+            // Extract Phone
+            const phoneMatch = text.match(/(?:telefone|celular|número|whats)\s*[:\s]*([\d\(\)\-\s]+)/i);
+            if (phoneMatch && phoneMatch[1]) {
+                phone = phoneMatch[1].trim();
+            }
+
+            // Extract Address
+            const addressMatch = text.match(/(?:endereço|local|rua|avenida)\s+([a-zA-ZÀ-ÿ0-9\s,\.-]+?)(?:,\s*(?:aparelho|serviço|material|tubo|mão de obra)|$)/i);
+            if (addressMatch && addressMatch[1]) {
+                address = addressMatch[1].trim();
+            }
+
+            // Extract Service / Appliance
+            const serviceMatch = text.match(/(?:aparelho|serviço|instalação|split|inverter)\s+([a-zA-ZÀ-ÿ0-9\s]+?)(?:,\s*(?:material|tubo|cabo|mão de obra|R\$|\d+\s*reais)|$)/i);
+            if (serviceMatch && serviceMatch[0]) {
+                service = serviceMatch[0].trim();
+            }
+
+            // Extract Material & Price
+            if (lower.includes('tubo') || lower.includes('cobre') || lower.includes('material')) {
+                const matMatch = text.match(/(?:tubo|cobre|material)[a-zA-ZÀ-ÿ0-9\s]*?(\d+)\s*(?:reais)?/i);
+                let price = matMatch && matMatch[1] ? parseFloat(matMatch[1]) : 180;
+                extractedItems.push({ desc: "Tubo de Cobre e Conexões (Voz)", price: price });
+            } else {
+                extractedItems.push({ desc: "Kit Instalação (Tubos, Cabos e Suporte)", price: 180 });
+            }
+
+            // Extract Labor & Price
+            if (lower.includes('mão de obra') || lower.includes('instalacao') || lower.includes('serviço')) {
+                const labMatch = text.match(/(?:mão de obra|serviço)[a-zA-ZÀ-ÿ0-9\s]*?(\d+)\s*(?:reais)?/i);
+                let price = labMatch && labMatch[1] ? parseFloat(labMatch[1]) : 250;
+                extractedItems.push({ desc: "Mão de Obra de Instalação", price: price });
+            } else {
+                extractedItems.push({ desc: "Mão de Obra de Instalação e Testes", price: 250 });
+            }
+
+            // Populate Modal Fields cleanly
+            document.getElementById('client-name').value = name || "";
+            document.getElementById('client-phone').value = phone || "";
+            document.getElementById('client-address').value = address || "";
+            document.getElementById('service-desc').value = service || text;
+
+            // Populate items container
+            const container = document.getElementById('items-container');
+            container.innerHTML = '';
+            extractedItems.forEach(item => {
+                addItemRowWithData(item.desc, item.price);
+            });
+
+            calculateTotal();
+            openQuoteModal();
+            showToast("Áudio processado e separado nos campos com sucesso!");
+        }
+
+        // Quote Modal Functions
+        function openQuoteModal() {
+            document.getElementById('quote-modal').classList.remove('hidden');
+            // Reset if clean
+            if(document.querySelectorAll('.item-row').length === 0) {
+                addItemRow();
+            }
+        }
+
+        function closeQuoteModal() {
+            document.getElementById('quote-modal').classList.add('hidden');
+        }
+
+        function addItemRow() {
+            const container = document.getElementById('items-container');
+            const div = document.createElement('div');
+            div.className = "flex items-center space-x-2 item-row";
+            div.innerHTML = `
+                <input type="text" placeholder="Ex: Cabo PP 3x2.5mm" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs item-desc focus:outline-none focus:border-blue-500">
+                <input type="number" placeholder="Valor R$" oninput="calculateTotal()" class="w-24 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs item-price focus:outline-none focus:border-blue-500">
+                <button onclick="removeItemRow(this)" class="w-8 h-8 text-rose-500 hover:bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                </button>
+            `;
+            container.appendChild(div);
+        }
+
+        function addItemRowWithData(desc, price) {
+            const container = document.getElementById('items-container');
+            const div = document.createElement('div');
+            div.className = "flex items-center space-x-2 item-row";
+            div.innerHTML = `
+                <input type="text" value="${desc}" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs item-desc focus:outline-none focus:border-blue-500">
+                <input type="number" value="${price}" oninput="calculateTotal()" class="w-24 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs item-price focus:outline-none focus:border-blue-500">
+                <button onclick="removeItemRow(this)" class="w-8 h-8 text-rose-500 hover:bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                </button>
+            `;
+            container.appendChild(div);
+        }
+
+        function removeItemRow(btn) {
+            const rows = document.querySelectorAll('.item-row');
+            if (rows.length > 1) {
+                btn.closest('.item-row').remove();
+                calculateTotal();
+            } else {
+                showToast("O orçamento precisa de pelo menos 1 item.");
+            }
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            document.querySelectorAll('.item-price').forEach(input => {
+                const val = parseFloat(input.value) || 0;
+                total += val;
+            });
+            document.getElementById('modal-total-display').textContent = `R$ ${total.toFixed(2)}`;
+            return total;
+        }
+
+        // Save & Generate Quote
+        function saveAndGenerateQuote() {
+            const clientName = document.getElementById('client-name').value.trim() || "Cliente Geral";
+            const clientPhone = document.getElementById('client-phone').value.trim() || "(00) 00000-0000";
+            const clientAddress = document.getElementById('client-address').value.trim() || "Endereço não informado";
+            const serviceDesc = document.getElementById('service-desc').value.trim() || "Instalação de Ar-Condicionado Split";
+            
+            let items = [];
+            document.querySelectorAll('.item-row').forEach(row => {
+                const desc = row.querySelector('.item-desc').value.trim() || "Item";
+                const price = parseFloat(row.querySelector('.item-price').value) || 0;
+                items.push({ desc, price });
+            });
+
+            const total = calculateTotal();
+            const date = new Date().toLocaleDateString('pt-BR');
+            const id = 'ORC-' + Math.floor(1000 + Math.random() * 9000);
+
+            const quoteObj = { id, clientName, clientPhone, clientAddress, serviceDesc, items, total, date };
+            
+            quotes.unshift(quoteObj);
+            localStorage.setItem('ar_orcamentos', JSON.stringify(quotes));
+
+            closeQuoteModal();
+            renderHistory();
+            updateStats();
+            
+            showQuoteResult(quoteObj);
+            showToast("Orçamento salvo com sucesso!");
+        }
+
+        // Result / Receipt Preview Modal
+        function showQuoteResult(quote) {
+            currentActiveQuote = quote;
+            const content = document.getElementById('receipt-preview-content');
+            
+            let itemsHtml = quote.items.map(i => `
+                <div class="flex justify-between py-1 border-b border-slate-100 text-slate-700">
+                    <span>${i.desc}</span>
+                    <strong class="text-slate-900">R$ ${i.price.toFixed(2)}</strong>
+                </div>
+            `).join('');
+
+            content.innerHTML = `
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                    <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-blue-600">Ar no Preço Certo</span>
+                            <h4 class="font-extrabold text-sm text-slate-800">${quote.id}</h4>
+                        </div>
+                        <span class="text-xs text-slate-500">${quote.date}</span>
+                    </div>
+                    
+                    <div class="space-y-1 text-xs">
+                        <p><strong class="text-slate-600">Cliente:</strong> ${quote.clientName}</p>
+                        <p><strong class="text-slate-600">Tel:</strong> ${quote.clientPhone}</p>
+                        <p><strong class="text-slate-600">Local:</strong> ${quote.clientAddress}</p>
+                        <p><strong class="text-slate-600">Serviço:</strong> ${quote.serviceDesc}</p>
+                    </div>
+
+                    <div class="pt-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Itens do Orçamento</span>
+                        <div class="space-y-1 max-h-32 overflow-y-auto pr-1">
+                            ${itemsHtml}
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-3 border-t border-slate-200 text-sm">
+                        <span class="font-extrabold text-slate-800">Total Geral:</span>
+                        <span class="font-extrabold text-blue-600 text-base">R$ ${quote.total.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('result-modal').classList.remove('hidden');
+        }
+
+        function closeResultModal() {
+            document.getElementById('result-modal').classList.add('hidden');
+        }
+
+        // Render History List
+        function renderHistory() {
+            const listEl = document.getElementById('history-list');
+            updateStats();
+
+            if (quotes.length === 0) {
+                listEl.innerHTML = `
+                    <div class="text-center py-10 bg-white rounded-2xl border border-slate-100 p-6 space-y-2">
+                        <i class="fa-solid fa-file-invoice text-slate-300 text-3xl"></i>
+                        <p class="text-xs text-slate-500 font-medium">Nenhum orçamento salvo ainda.</p>
+                        <button onclick="openQuoteModal()" class="text-xs font-bold text-blue-600 hover:underline">Criar primeiro orçamento</button>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = quotes.map((q, idx) => `
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2 hover:border-blue-300 transition">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">${q.id}</span>
+                            <h4 class="font-bold text-sm text-slate-800 mt-1">${q.clientName}</h4>
+                            <p class="text-[11px] text-slate-500">${q.serviceDesc}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-extrabold text-blue-600 block">R$ ${q.total.toFixed(2)}</span>
+                            <span class="text-[10px] text-slate-400">${q.date}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                        <button onclick="viewSavedQuote(${idx})" class="text-blue-600 font-bold hover:underline flex items-center gap-1">
+                            <i class="fa-solid fa-eye"></i> Ver Orçamento
+                        </button>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="shareSavedWhatsApp(${idx})" class="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg font-bold hover:bg-emerald-100 transition flex items-center gap-1">
+                                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                            </button>
+                            <button onclick="deleteQuote(${idx})" class="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterHistory() {
+            const query = document.getElementById('search-history').value.toLowerCase();
+            const filtered = quotes.filter(q => q.clientName.toLowerCase().includes(query) || q.serviceDesc.toLowerCase().includes(query) || q.id.toLowerCase().includes(query));
+            
+            const listEl = document.getElementById('history-list');
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div class="text-center py-6 text-xs text-slate-400">Nenhum orçamento encontrado para "${query}"</div>`;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map((q, idx) => `
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">${q.id}</span>
+                            <h4 class="font-bold text-sm text-slate-800 mt-1">${q.clientName}</h4>
+                            <p class="text-[11px] text-slate-500">${q.serviceDesc}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-extrabold text-blue-600 block">R$ ${q.total.toFixed(2)}</span>
+                            <span class="text-[10px] text-slate-400">${q.date}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                        <button onclick="viewSavedQuoteByIndex(${idx})" class="text-blue-600 font-bold hover:underline flex items-center gap-1">
+                            <i class="fa-solid fa-eye"></i> Ver Orçamento
+                        </button>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="shareSavedWhatsAppByIndex(${idx})" class="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg font-bold hover:bg-emerald-100 transition flex items-center gap-1">
+                                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function viewSavedQuote(idx) {
+            showQuoteResult(quotes[idx]);
+        }
+
+        function viewSavedQuoteByIndex(idx) {
+            showQuoteResult(quotes[idx]);
+        }
+
+        function deleteQuote(idx) {
+            quotes.splice(idx, 1);
+            localStorage.setItem('ar_orcamentos', JSON.stringify(quotes));
+            renderHistory();
+            updateStats();
+            showToast("Orçamento excluído.");
+        }
+
+        function clearHistory() {
+            quotes = [];
+            localStorage.removeItem('ar_orcamentos');
+            renderHistory();
+            updateStats();
+            showToast("Histórico limpo.");
+        }
+
+        // PDF Generation with jsPDF
+        function downloadPDFFromModal() {
+            if (!currentActiveQuote) return;
+            generatePDF(currentActiveQuote);
+        }
+
+        function generatePDF(quote) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Header banner
+            doc.setFillColor(15, 23, 42); // slate-900
+            doc.rect(0, 0, 210, 35, 'F');
+            
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(16);
+            doc.setFont('inter', 'bold');
+            doc.text("AR NO PREÇO CERTO", 14, 20);
+            
+            doc.setFontSize(10);
+            doc.text(`Orçamento: ${quote.id} | Data: ${quote.date}`, 14, 27);
+
+            // Client Info
+            doc.setTextColor(30, 41, 59);
+            doc.setFontSize(12);
+            doc.text("Dados do Cliente", 14, 48);
+            
+            doc.setFontSize(10);
+            doc.setFont('inter', 'normal');
+            doc.text(`Cliente: ${quote.clientName}`, 14, 56);
+            doc.text(`Telefone: ${quote.clientPhone}`, 14, 63);
+            doc.text(`Endereço: ${quote.clientAddress}`, 14, 70);
+            doc.text(`Serviço / Aparelho: ${quote.serviceDesc}`, 14, 77);
+
+            // Table Header
+            doc.setFillColor(241, 245, 249);
+            doc.rect(14, 87, 182, 8, 'F');
+            doc.setFont('inter', 'bold');
+            doc.text("Descrição do Item / Material", 18, 93);
+            doc.text("Valor (R$)", 165, 93);
+
+            // Items loop
+            let y = 103;
+            doc.setFont('inter', 'normal');
+            quote.items.forEach(item => {
+                doc.text(item.desc, 18, y);
+                doc.text(`R$ ${item.price.toFixed(2)}`, 165, y);
+                y += 8;
+            });
+
+            // Total box
+            y += 5;
+            doc.setFillColor(239, 246, 255);
+            doc.rect(14, y, 182, 14, 'F');
+            doc.setFont('inter', 'bold');
+            doc.setTextColor(37, 99, 235);
+            doc.text("VALOR TOTAL DO ORÇAMENTO:", 18, y + 9);
+            doc.text(`R$ ${quote.total.toFixed(2)}`, 160, y + 9);
+
+            // Footer
+            doc.setFontSize(8);
+            doc.setTextColor(100, 116, 139);
+            doc.text("Gerado por Ar no Preço Certo - Aplicativo para Técnicos de Ar-Condicionado", 14, 280);
+
+            doc.save(`Orcamento_${quote.clientName.replace(/\s+/g, '_')}_${quote.id}.pdf`);
+            showToast("PDF baixado com sucesso!");
+        }
+
+        // WhatsApp Sharing
+        function sendWhatsAppFromModal() {
+            if (!currentActiveQuote) return;
+            shareWhatsApp(currentActiveQuote);
+        }
+
+        function shareSavedWhatsApp(idx) {
+            shareWhatsApp(quotes[idx]);
+        }
+
+        function shareSavedWhatsAppByIndex(idx) {
+            shareWhatsApp(quotes[idx]);
+        }
+
+        function shareWhatsApp(quote) {
+            let itemsText = quote.items.map(i => `• ${i.desc}: *R$ ${i.price.toFixed(2)}*`).join('\n');
+            const message = `*AR NO PREÇO CERTO - ORÇAMENTO*\n\n` +
+                            `📄 *${quote.id}*\n` +
+                            `👤 *Cliente:* ${quote.clientName}\n` +
+                            `🛠️ *Serviço:* ${quote.serviceDesc}\n\n` +
+                            `*Detalhamento:*\n${itemsText}\n\n` +
+                            `💰 *VALOR TOTAL: R$ ${quote.total.toFixed(2)}*\n\n` +
+                            `📅 Data: ${quote.date}\n` +
+                            `Agradecemos a preferência!`;
+
+            const encoded = encodeURIComponent(message);
+            window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+        }
+
+        // Scripts WhatsApp Copy
+        function copyScript(id) {
+            const text = document.getElementById(`script-${id}`).textContent;
+            navigator.clipboard.writeText(text.trim()).then(() => {
+                showToast("Script copiado para a área de transferência!");
+            }).catch(() => {
+                // Fallback copy
+                const textArea = document.createElement("textarea");
+                textArea.value = text.trim();
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textArea);
+                showToast("Script copiado com sucesso!");
+            });
+        }
+
+        // Install Guide Modal
+        function openInstallGuide() {
+            document.getElementById('install-modal').classList.remove('hidden');
+        }
+
+        function closeInstallGuide() {
+            document.getElementById('install-modal').classList.add('hidden');
+        }
+
+        // Toast Helper
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
