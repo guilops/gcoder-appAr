@@ -134,8 +134,8 @@
                         <span class="text-xs font-bold uppercase tracking-wider">Orçamento por Áudio IA</span>
                     </div>
 
-                    <h2 class="text-xl font-extrabold mb-1">Fala o serviço. O orçamento sai pronto.</h2>
-                    <p class="text-xs text-blue-100 mb-6">Material, mão de obra e total separados, em 1 minuto.</p>
+                    <h2 class="text-xl font-extrabold mb-1">Dite o orçamento inteiro de uma vez.</h2>
+                    <p class="text-xs text-blue-100 mb-6">Fale nome, telefone, endereço, serviço e itens com valores. O app preenche após uma pausa.</p>
 
                     <!-- Big Mic Button -->
                     <div class="flex flex-col items-center justify-center my-4">
@@ -143,7 +143,7 @@
                             <i class="fa-solid fa-microphone" id="mic-icon"></i>
                             <div id="mic-ring" class="absolute inset-0 rounded-full border-4 border-white/50 hidden"></div>
                         </button>
-                        <span id="mic-status" aria-live="polite" class="text-xs font-semibold text-blue-100 mt-3">Toque para criar orçamento por etapas</span>
+                        <span id="mic-status" aria-live="polite" class="text-xs font-semibold text-blue-100 mt-3">Toque para começar a falar</span>
                     </div>
 
                     <!-- Voice Transcript Box -->
@@ -277,8 +277,9 @@
             <div class="p-5 overflow-y-auto space-y-4 flex-1">
 
                 <div class="rounded-2xl border border-blue-100 bg-blue-50 p-3 flex items-center gap-3">
-                    <button type="button" onclick="toggleVoiceRecognition()" aria-label="Falar próxima etapa" class="w-11 h-11 shrink-0 rounded-xl bg-blue-600 text-white shadow flex items-center justify-center"><i class="fa-solid fa-microphone"></i></button>
-                    <div class="min-w-0"><p id="modal-voice-status" aria-live="polite" class="text-xs font-bold text-blue-900">Fale cada campo por etapa usando o microfone.</p><p id="modal-transcript" class="text-[11px] text-slate-500 truncate">Nome → telefone → endereço → serviço → item e valor</p></div>
+                    <button type="button" onclick="toggleVoiceRecognition()" id="modal-mic-btn" aria-label="Começar a ditar orçamento" class="w-11 h-11 shrink-0 rounded-xl bg-blue-600 text-white shadow flex items-center justify-center"><i class="fa-solid fa-microphone"></i></button>
+                    <div class="min-w-0 flex-1"><p id="modal-voice-status" aria-live="polite" class="text-xs font-bold text-blue-900">Dite o orçamento completo. Preencho após 2,5 segundos sem fala.</p><p id="modal-transcript" aria-live="polite" class="text-[11px] text-slate-500 max-h-20 overflow-y-auto">A transcrição completa aparecerá aqui.</p></div>
+                    <button type="button" id="finish-voice-btn" onclick="finishVoiceRecognition()" disabled class="shrink-0 rounded-xl bg-rose-600 px-3 py-2 text-[11px] font-bold text-white opacity-50 disabled:cursor-not-allowed">Parar e preencher</button>
                 </div>
                 
                 <!-- Client Info -->
@@ -435,14 +436,8 @@
         let currentActiveQuote = null;
         let recognition = null;
         let isListening = false;
-        let voiceStep = 0;
-        const voiceSteps = [
-            { field: 'client-name', prompt: 'Etapa 1 de 5: fale o nome do cliente e toque no microfone.' },
-            { field: 'client-phone', prompt: 'Etapa 2 de 5: fale o telefone de contato e toque no microfone.' },
-            { field: 'client-address', prompt: 'Etapa 3 de 5: fale o endereço da instalação e toque no microfone.' },
-            { field: 'service-desc', prompt: 'Etapa 4 de 5: fale o aparelho e o serviço. Toque no microfone.' },
-            { field: 'voice-item', prompt: 'Etapa 5 de 5: fale um item e seu valor, por exemplo: tubo de cobre, 180 reais.' }
-        ];
+        let voiceTranscript = '';
+        let voiceSilenceTimer = null;
 
         // Init on Load
         window.onload = function() {
@@ -486,178 +481,173 @@
             document.getElementById('tab-' + tabId).className = "px-4 py-2 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md shadow-blue-500/20 transition flex items-center gap-1.5";
         }
 
-        // Voice Recognition Setup (Web Speech API)
+        // Continuous speech capture: fill the form only after the user stops.
         function initSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (SpeechRecognition) {
-                recognition = new SpeechRecognition();
-                recognition.lang = 'pt-BR';
-                recognition.continuous = false;
-                recognition.interimResults = true;
-
-                recognition.onstart = function() {
-                    isListening = true;
-                    document.getElementById('mic-btn').classList.add('bg-blue-50', 'ring-4', 'ring-blue-300');
-                    document.getElementById('mic-ring').classList.remove('hidden');
-                    document.getElementById('mic-status').textContent = voiceSteps[voiceStep]?.prompt || 'Ouvindo...';
-                    document.getElementById('modal-voice-status').textContent = voiceSteps[voiceStep]?.prompt || 'Ouvindo...';
-                    document.getElementById('transcript-box').classList.remove('hidden');
-                };
-
-                recognition.onresult = function(event) {
-                    let transcript = '';
-                    for (let i = event.resultIndex; i < event.results.length; i++) {
-                        transcript += event.results[i][0].transcript;
-                    }
-                    document.getElementById('transcript-text').textContent = transcript;
-                    
-                    if (event.results[event.results.length - 1].isFinal) {
-                        acceptVoiceStep(transcript.trim());
-                    }
-                };
-
-                recognition.onerror = function(event) {
-                    stopVoiceRecognition();
-                    showToast("Erro no reconhecimento de voz. Tente novamente.");
-                };
-
-                recognition.onend = function() {
-                    stopVoiceRecognition();
-                };
-            }
+            if (!SpeechRecognition) return;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'pt-BR';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.onstart = function() {
+                isListening = true;
+                document.getElementById('mic-btn').classList.add('bg-blue-50', 'ring-4', 'ring-blue-300');
+                document.getElementById('mic-ring').classList.remove('hidden');
+                document.getElementById('mic-status').textContent = 'Ouvindo tudo. Toque em Parar e preencher quando terminar.';
+                document.getElementById('modal-voice-status').textContent = 'Ouvindo tudo. Preencho automaticamente após 2,5 segundos sem fala.';
+                document.getElementById('modal-mic-btn').classList.add('bg-rose-600');
+                document.getElementById('finish-voice-btn').disabled = false;
+                document.getElementById('finish-voice-btn').classList.remove('opacity-50');
+                document.getElementById('transcript-box').classList.remove('hidden');
+            };
+            recognition.onresult = function(event) {
+                voiceTranscript = Array.from(event.results).map(result => result[0].transcript).join(' ').replace(/\s+/g, ' ').trim();
+                document.getElementById('transcript-text').textContent = voiceTranscript || 'Ouvindo...';
+                document.getElementById('modal-transcript').textContent = voiceTranscript || 'Ouvindo...';
+                clearTimeout(voiceSilenceTimer);
+                voiceSilenceTimer = setTimeout(finishVoiceRecognition, 2500);
+            };
+            recognition.onerror = function(event) {
+                if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                    showToast(event.error === 'not-allowed' ? 'Permita o acesso ao microfone nas configurações do navegador.' : 'Falha no reconhecimento. Tente falar novamente.');
+                }
+            };
+            recognition.onend = function() {
+                const transcript = voiceTranscript.trim();
+                stopVoiceRecognition();
+                if (transcript) parseVoiceTranscript(transcript);
+                else {
+                    document.getElementById('modal-voice-status').textContent = 'Não consegui ouvir. Toque no microfone para tentar de novo.';
+                    showToast('Nenhuma fala foi reconhecida. Tente novamente.');
+                }
+            };
         }
 
         function toggleVoiceRecognition() {
             if (!recognition) {
-                showToast("Seu navegador não suporta reconhecimento de voz. Use o botão 'Montar na mão'.");
+                showToast('Seu navegador não oferece reconhecimento de voz. Preencha o orçamento manualmente.');
                 openQuoteModal();
                 return;
             }
-
-            if (isListening) {
-                recognition.stop();
-            } else {
-                try {
-                    openQuoteModal();
-                    recognition.start();
-                } catch(e) {
-                    recognition.stop();
-                }
+            if (isListening) { finishVoiceRecognition(); return; }
+            try {
+                openQuoteModal();
+                voiceTranscript = '';
+                document.getElementById('modal-transcript').textContent = 'Aguardando sua fala...';
+                recognition.start();
+            } catch (error) {
+                showToast('Não foi possível iniciar o microfone. Verifique a permissão do navegador.');
             }
+        }
+
+        function finishVoiceRecognition() {
+            clearTimeout(voiceSilenceTimer);
+            if (recognition && isListening) recognition.stop();
         }
 
         function stopVoiceRecognition() {
+            clearTimeout(voiceSilenceTimer);
             isListening = false;
             document.getElementById('mic-btn').classList.remove('bg-blue-50', 'ring-4', 'ring-blue-300');
             document.getElementById('mic-ring').classList.add('hidden');
-            document.getElementById('mic-status').textContent = voiceSteps[voiceStep]?.prompt || 'Dados por voz preenchidos. Confira e complete os itens.';
-            document.getElementById('modal-voice-status').textContent = voiceSteps[voiceStep]?.prompt || 'Dados preenchidos. Confira os itens e salve.';
+            document.getElementById('mic-status').textContent = 'Fala capturada. Confira o or?amento preenchido.';
+            document.getElementById('modal-mic-btn').classList.remove('bg-rose-600');
+            document.getElementById('finish-voice-btn').disabled = true;
+            document.getElementById('finish-voice-btn').classList.add('opacity-50');
+            document.getElementById('modal-voice-status').textContent = 'Separando os dados da sua fala...';
         }
 
-        function acceptVoiceStep(text) {
-            if (!text) return;
-            const step = voiceSteps[voiceStep];
-            if (step?.field === 'voice-item') {
-                const match = text.match(/(.+?)(?:[,;]\s*)?(\d+(?:[.,]\d{1,2})?)\s*(?:reais|real|r\$)?$/i);
-                const firstRow = document.querySelector('.item-row');
-                if (firstRow && !firstRow.querySelector('.item-desc').value && !firstRow.querySelector('.item-price').value) {
-                    firstRow.querySelector('.item-desc').value = match ? match[1].trim() : text;
-                    firstRow.querySelector('.item-price').value = match ? Number(match[2].replace(',', '.')) : 0;
-                } else {
-                    addItemRowWithData(match ? match[1].trim() : text, match ? Number(match[2].replace(',', '.')) : 0);
-                }
-                calculateTotal();
-            } else if (step) {
-                document.getElementById(step.field).value = text;
-            }
-            voiceStep++;
-            const draft = { voiceStep };
-            ['client-name', 'client-phone', 'client-address', 'service-desc'].forEach(id => draft[id] = document.getElementById(id).value);
-            draft.items = [...document.querySelectorAll('.item-row')].map(row => ({ desc: row.querySelector('.item-desc').value, price: row.querySelector('.item-price').value }));
-            localStorage.setItem('ar_orcamento_rascunho', JSON.stringify(draft));
-            document.getElementById('transcript-text').textContent = text;
-            document.getElementById('modal-transcript').textContent = `Reconhecido: ${text}`;
-            if (voiceStep < voiceSteps.length) {
-                document.getElementById('mic-status').textContent = voiceSteps[voiceStep].prompt;
-                document.getElementById('modal-voice-status').textContent = voiceSteps[voiceStep].prompt;
-                showToast(`Etapa ${voiceStep} de 5 salva. ${voiceSteps[voiceStep].prompt}`);
-            } else {
-                document.getElementById('mic-status').textContent = 'Tudo preenchido. Confira e salve seu orçamento.';
-                document.getElementById('modal-voice-status').textContent = 'Tudo preenchido. Confira os dados e salve seu orçamento.';
-                showToast('Dados por voz preenchidos. Confira os valores e salve.');
-            }
-        }
-
-        // Smart Voice Parser (Extracts items & client info automatically)
         function parseVoiceTranscript(text) {
-            stopVoiceRecognition();
-            
-            const lower = text.toLowerCase();
-            let name = "";
-            let phone = "";
-            let address = "";
-            let service = text;
-            let extractedItems = [];
-
-            // Intelligent parsing heuristics for Portuguese speech
-            // Extract Name
-            const nameMatch = text.match(/(?:nome(?:\s+é)?|cliente)\s+([a-zA-ZÀ-ÿ\s]+?)(?:,\s*(?:telefone|celular|número|endereço|local|aparelho|serviço)|$)/i);
-            if (nameMatch && nameMatch[1]) {
-                name = nameMatch[1].trim();
+            const original = text.trim();
+            const normalized = original.normalize('NFD').replace(/\p{M}/gu, '');
+            const markers = [
+                /\b(?:meu nome (?:e|eh)|me chamo|nome(?: do cliente)?(?: e| eh)?|cliente(?: e| eh)?|orcamento para)\s*[:, -]?/i,
+                /\b(?:telefone|celular|whatsapp|whats|numero)\s*(?:e|eh|:)?\s*/i,
+                /\b(?:endereco|local(?: da instalacao)?|rua|avenida|av\.)\s*(?:e|eh|:)?\s*/i,
+                /\b(?:servico|aparelho|instalacao de|ar condicionado|split|inverter)\s*(?:e|eh|:)?\s*/i,
+                /\b(?:materiais?|itens?|pecas?|mao de obra)\s*[:, -]?/i
+            ];
+            function nextMarkerIndex(from) {
+                let end = normalized.length;
+                for (const marker of markers) {
+                    const search = new RegExp(marker.source, 'ig');
+                    search.lastIndex = from;
+                    const found = search.exec(normalized);
+                    if (found && found.index > from && found.index < end) end = found.index;
+                }
+                return end;
             }
-
-            // Extract Phone
-            const phoneMatch = text.match(/(?:telefone|celular|número|whats)\s*[:\s]*([\d\(\)\-\s]+)/i);
-            if (phoneMatch && phoneMatch[1]) {
-                phone = phoneMatch[1].trim();
+            function section(marker, excludedMarkers) {
+                const match = marker.exec(normalized);
+                if (!match) return '';
+                const from = match.index + match[0].length;
+                let to = normalized.length;
+                for (const stop of excludedMarkers) {
+                    const search = new RegExp(stop.source, 'ig');
+                    search.lastIndex = from;
+                    const found = search.exec(normalized);
+                    if (found && found.index < to) to = found.index;
+                }
+                return original.slice(from, to).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
             }
-
-            // Extract Address
-            const addressMatch = text.match(/(?:endereço|local|rua|avenida)\s+([a-zA-ZÀ-ÿ0-9\s,\.-]+?)(?:,\s*(?:aparelho|serviço|material|tubo|mão de obra)|$)/i);
-            if (addressMatch && addressMatch[1]) {
-                address = addressMatch[1].trim();
+            const nameMarker = /\b(?:meu nome (?:e|eh)|me chamo|nome(?: do cliente)?(?: e| eh)?|cliente(?: e| eh)?|orcamento para)\s*[:, -]?/i;
+            const phoneMarker = /\b(?:telefone|celular|whatsapp|whats|numero)\s*(?:e|eh|:)?\s*/i;
+            const addressMarker = /\b(?:endereco|local(?: da instalacao)?|rua|avenida|av\.)\s*(?:e|eh|:)?\s*/i;
+            const serviceMarker = /\b(?:servico|aparelho|instalacao de|ar condicionado|split|inverter)\s*(?:e|eh|:)?\s*/i;
+            const itemMarker = /\b(?:materiais?|itens?|pecas?|mao de obra)\s*[:, -]?/i;
+            const nameStops = [phoneMarker, addressMarker, serviceMarker, itemMarker];
+            let clientName = section(nameMarker, nameStops);
+            if (!clientName) {
+                const firstStop = nextMarkerIndex(0);
+                clientName = original.slice(0, firstStop).replace(/^.*?\borcamento\s+(?:para\s+)?/i, '').replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
             }
-
-            // Extract Service / Appliance
-            const serviceMatch = text.match(/(?:aparelho|serviço|instalação|split|inverter)\s+([a-zA-ZÀ-ÿ0-9\s]+?)(?:,\s*(?:material|tubo|cabo|mão de obra|R\$|\d+\s*reais)|$)/i);
-            if (serviceMatch && serviceMatch[0]) {
-                service = serviceMatch[0].trim();
+            const phoneText = section(phoneMarker, [addressMarker, serviceMarker, itemMarker]);
+            const phoneDigits = (phoneText.match(/\+?\d[\d\s().-]{7,}\d/) || [])[0] || '';
+            const address = section(addressMarker, [phoneMarker, serviceMarker, itemMarker]);
+            let service = section(serviceMarker, [phoneMarker, addressMarker, itemMarker]);
+            if (!service) {
+                const serviceStart = normalized.search(/\b(?:ar condicionado|split|inverter)\b/i);
+                if (serviceStart >= 0) service = original.slice(serviceStart, nextMarkerIndex(serviceStart)).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
             }
+            const firstServiceMarker = serviceMarker.exec(normalized);
+            if (firstServiceMarker && /^instalacao de/i.test(firstServiceMarker[0])) service = 'Instalação de ' + service;
 
-            // Extract Material & Price
-            if (lower.includes('tubo') || lower.includes('cobre') || lower.includes('material')) {
-                const matMatch = text.match(/(?:tubo|cobre|material)[a-zA-ZÀ-ÿ0-9\s]*?(\d+)\s*(?:reais)?/i);
-                let price = matMatch && matMatch[1] ? parseFloat(matMatch[1]) : 180;
-                extractedItems.push({ desc: "Tubo de Cobre e Conexões (Voz)", price: price });
-            } else {
-                extractedItems.push({ desc: "Kit Instalação (Tubos, Cabos e Suporte)", price: 180 });
+            const amountPattern = /(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?|(?:zero|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil)(?:\s+(?:e\s+)?(?:um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil))*)\s*(?:reais?|r\$)/gi;
+            function spokenNumber(value) {
+                if (/^\d/.test(value)) return Number(value.replace(',', '.'));
+                const values = { zero:0, um:1, uma:1, dois:2, duas:2, tres:3, quatro:4, cinco:5, seis:6, sete:7, oito:8, nove:9, dez:10, onze:11, doze:12, treze:13, quatorze:14, catorze:14, quinze:15, dezesseis:16, dezessete:17, dezoito:18, dezenove:19, vinte:20, trinta:30, quarenta:40, cinquenta:50, sessenta:60, setenta:70, oitenta:80, noventa:90, cem:100, cento:100, duzentos:200, trezentos:300, quatrocentos:400, quinhentos:500, seiscentos:600, setecentos:700, oitocentos:800, novecentos:900 };
+                let total = 0, group = 0;
+                value.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').split(/\s+|\be\b/).filter(Boolean).forEach(word => {
+                    if (word === 'mil') { total += (group || 1) * 1000; group = 0; }
+                    else if (values[word] != null) group += values[word];
+                });
+                return total + group;
             }
-
-            // Extract Labor & Price
-            if (lower.includes('mão de obra') || lower.includes('instalacao') || lower.includes('serviço')) {
-                const labMatch = text.match(/(?:mão de obra|serviço)[a-zA-ZÀ-ÿ0-9\s]*?(\d+)\s*(?:reais)?/i);
-                let price = labMatch && labMatch[1] ? parseFloat(labMatch[1]) : 250;
-                extractedItems.push({ desc: "Mão de Obra de Instalação", price: price });
-            } else {
-                extractedItems.push({ desc: "Mão de Obra de Instalação e Testes", price: 250 });
+            const itemMatches = [];
+            let itemStart = normalized.search(itemMarker);
+            amountPattern.lastIndex = 0;
+            let amount;
+            while ((amount = amountPattern.exec(normalized)) !== null) {
+                if (itemStart < 0) itemStart = amount.index;
+                const from = Math.max(itemStart, itemMatches.length ? itemMatches[itemMatches.length - 1].end : itemStart);
+                let desc = original.slice(from, amount.index).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').replace(/^(?:(?:e|tambem|material|materiais|item|itens|pecas)\s*:?[\s]*)+/i, '').replace(/\s+(?:por|a)\s*$/i, '').trim();
+                if (desc) itemMatches.push({ desc, price: spokenNumber(amount[1]), end: amountPattern.lastIndex });
             }
-
-            // Populate Modal Fields cleanly
-            document.getElementById('client-name').value = name || "";
-            document.getElementById('client-phone').value = phone || "";
-            document.getElementById('client-address').value = address || "";
-            document.getElementById('service-desc').value = service || text;
-
-            // Populate items container
+            const items = itemMatches.map(({ desc, price }) => ({ desc, price }));
             const container = document.getElementById('items-container');
             container.innerHTML = '';
-            extractedItems.forEach(item => {
-                addItemRowWithData(item.desc, item.price);
-            });
-
+            if (items.length) items.forEach(item => addItemRowWithData(item.desc, item.price));
+            else addItemRow();
+            document.getElementById('client-name').value = clientName;
+            document.getElementById('client-phone').value = phoneDigits || phoneText;
+            document.getElementById('client-address').value = address;
+            document.getElementById('service-desc').value = service;
             calculateTotal();
-            openQuoteModal();
-            showToast("Áudio processado e separado nos campos com sucesso!");
+            document.getElementById('modal-voice-status').textContent = 'Fala separada nos campos. Confira e corrija o que precisar antes de salvar.';
+            showToast(items.length ? 'Fala organizada em cliente, servi?o e itens. Confira o or?amento.' : 'Dados organizados. Adicione os valores dos itens antes de salvar.');
+            try {
+                localStorage.setItem('ar_orcamento_rascunho', JSON.stringify({ 'client-name': clientName, 'client-phone': phoneDigits || phoneText, 'client-address': address, 'service-desc': service, items }));
+            } catch (error) { console.warn('N?o foi poss?vel guardar o rascunho.', error); }
         }
 
         // Quote Modal Functions
@@ -670,7 +660,6 @@
                         const field = document.getElementById(id);
                         if (!field.value && draft[id]) field.value = draft[id];
                     });
-                    if (draft.voiceStep != null) voiceStep = draft.voiceStep;
                     if (draft.items?.length) {
                         const container = document.getElementById('items-container');
                         container.innerHTML = '';
@@ -686,6 +675,7 @@
         }
 
         function closeQuoteModal() {
+            if (isListening) finishVoiceRecognition();
             document.getElementById('quote-modal').classList.add('hidden');
         }
 
@@ -739,6 +729,7 @@
 
         // Save & Generate Quote
         function saveAndGenerateQuote() {
+            if (isListening) { finishVoiceRecognition(); showToast('Fala encerrada e campos preenchidos. Toque em salvar novamente.'); return; }
             const clientName = document.getElementById('client-name').value.trim();
             if (!clientName) { showToast('Informe o nome do cliente para salvar o orçamento.'); document.getElementById('client-name').focus(); return; }
             const clientPhone = document.getElementById('client-phone').value.trim() || "(00) 00000-0000";
@@ -761,7 +752,6 @@
             quotes.unshift(quoteObj);
             localStorage.setItem('ar_orcamentos', JSON.stringify(quotes));
             localStorage.removeItem('ar_orcamento_rascunho');
-            voiceStep = 0;
             ['client-name', 'client-phone', 'client-address', 'service-desc'].forEach(fieldId => document.getElementById(fieldId).value = '');
             document.getElementById('items-container').innerHTML = '';
             addItemRow();
