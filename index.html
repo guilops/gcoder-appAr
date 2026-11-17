@@ -1,1052 +1,1473 @@
 <!DOCTYPE html>
 <html lang="pt-BR" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="description" content="Crie orçamentos profissionais de instalação e manutenção de ar-condicionado por voz ou manualmente.">
-    <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" type="image/svg+xml" href="icon.svg">
-    <link rel="apple-touch-icon" href="icon.svg">
-    <title>Ar no Preço Certo</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- jsPDF para Geração de Orçamento em PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: {
-                        brand: {
-                            50: '#eff6ff',
-                            100: '#dbeafe',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                            900: '#0f172a'
-                        }
-                    }
-                }
-            }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#2563EB">
+  <meta name="description" content="Crie orçamentos profissionais de ar-condicionado por voz ou manualmente.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>Ar no Preço Certo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: { 50:'#EEF2FF', 100:'#E0E7FF', 500:'#3B5BDB', 600:'#2563EB', 700:'#1D4ED8' }
+          }
         }
-    </script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        @keyframes pulse-ring {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-        }
-        .mic-pulsing { animation: pulse-ring 2s infinite; }
-        :focus-visible { outline: 3px solid #60a5fa; outline-offset: 2px; }
-        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
-    </style>
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #EEF2FF; -webkit-tap-highlight-color: transparent; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes pulse-ring {
+      0%   { box-shadow: 0 0 0 0 rgba(37,99,235,0.6); }
+      70%  { box-shadow: 0 0 0 16px rgba(37,99,235,0); }
+      100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
+    }
+    .mic-pulsing { animation: pulse-ring 1.5s infinite; }
+    @keyframes fadeInUp {
+      from { opacity:0; transform:translateY(16px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .fade-up { animation: fadeInUp .22s ease both; }
+    .modal-sheet { animation: slideUp .25s cubic-bezier(.32,1.25,.5,1) both; }
+    @keyframes slideUp {
+      from { transform:translateY(100%); opacity:0; }
+      to   { transform:translateY(0); opacity:1; }
+    }
+    .pill-tab { transition: all .18s; }
+    input, textarea, select { font-family: inherit; }
+    .status-badge-pendente  { background:#FEF3C7; color:#92400E; }
+    .status-badge-enviado   { background:#DBEAFE; color:#1E40AF; }
+    .status-badge-aprovado  { background:#D1FAE5; color:#065F46; }
+    .swipe-wrap { touch-action: pan-y; }
+    :focus-visible { outline: 3px solid #60a5fa; outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration:.01ms!important; transition-duration:.01ms!important; }
+    }
+    .item-row { display:grid; grid-template-columns:1fr auto auto; gap:6px; align-items:center; }
+  </style>
 </head>
-<body class="h-full flex justify-center items-center bg-slate-900 text-slate-800">
+<body class="h-full min-h-screen flex flex-col">
 
-    <!-- Mobile Container Wrapper -->
-    <div class="w-full max-w-5xl h-full sm:h-[92vh] sm:rounded-3xl bg-slate-50 shadow-2xl flex flex-col overflow-hidden relative border border-slate-800">
+<!-- ===================== APP ROOT ===================== -->
+<div id="app" class="flex flex-col min-h-screen max-w-lg mx-auto w-full relative bg-[#EEF2FF]">
 
-        <!-- Top Header Bar -->
-        <header class="bg-white px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100 sticky top-0 z-30">
-            <div class="flex items-center space-x-2">
-                <div class="bg-blue-600 text-white p-2 rounded-xl shadow-md flex items-center justify-center">
-                    <i class="fa-solid fa-snowflake text-lg"></i>
-                </div>
-                <div>
-                    <span class="text-xs font-bold uppercase tracking-wider text-blue-600">Ar no Preço Certo</span>
-                    <h1 class="text-sm font-extrabold text-slate-800" id="header-greeting">Bom dia, Técnico</h1>
-                </div>
-            </div>
-            <div class="flex items-center space-x-3">
-                <button onclick="openInstallGuide()" class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-blue-100 transition shadow-sm flex items-center gap-1">
-                    <i class="fa-solid fa-mobile-screen"></i> App
-                </button>
-                <div class="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shadow-md border-2 border-blue-500">
-                    AR
-                </div>
-            </div>
-        </header>
+  <!-- ===== HEADER ===== -->
+  <header class="bg-white px-4 pt-4 pb-3 flex items-center justify-between sticky top-0 z-30 border-b border-slate-100 shadow-sm">
+    <div class="flex items-center gap-2">
+      <div class="bg-brand-600 text-white p-2 rounded-xl shadow flex items-center justify-center">
+        <i class="fa-solid fa-snowflake text-base"></i>
+      </div>
+      <span class="text-base font-extrabold text-brand-600 leading-none">Ar no Preço Certo</span>
+    </div>
+    <button onclick="openView('meus-dados')" class="relative" aria-label="Meus dados">
+      <div id="avatar-circle" class="w-10 h-10 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-sm border-2 border-brand-100 overflow-hidden shadow">
+        <span id="avatar-initials">AR</span>
+        <img id="avatar-logo" src="" alt="Logo" class="hidden w-full h-full object-cover">
+      </div>
+    </button>
+  </header>
 
-        <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto p-4 space-y-4 pb-24 hide-scrollbar" id="main-content">
-            
-            <!-- Date & Banner Card -->
-            <div class="space-y-1">
-                <p class="text-xs text-slate-500 font-medium capitalize" id="current-date-label">domingo, 15 de novembro</p>
-            </div>
+  <!-- ===== MAIN CONTENT AREA ===== -->
+  <main class="flex-1 overflow-y-auto hide-scrollbar pb-28" id="main-scroll">
 
-            <!-- Tabs / Navigation Pills -->
-            <div class="flex space-x-2 overflow-x-auto hide-scrollbar pb-1">
-                <button onclick="switchTab('home')" id="tab-home" class="px-4 py-2 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md shadow-blue-500/20 transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-house"></i> Início
-                </button>
-                <button onclick="switchTab('history')" id="tab-history" class="px-4 py-2 rounded-full text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-invoice-dollar"></i> Orçamentos (<span id="history-count">0</span>)
-                </button>
-                <button onclick="switchTab('scripts')" id="tab-scripts" class="px-4 py-2 rounded-full text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-bolt"></i> Scripts WhatsApp
-                </button>
-            </div>
+    <!-- ===== VIEW: ORÇAMENTOS (PRINCIPAL) ===== -->
+    <div id="view-orcamentos" class="p-4 space-y-4">
+      <!-- Contagem e título -->
+      <div>
+        <p class="text-xs text-slate-500" id="orcamentos-count-label">0 orçamentos</p>
+        <h1 class="text-2xl font-extrabold text-slate-800">Orçamentos</h1>
+      </div>
 
-            <!-- HOME TAB VIEW -->
-            <div id="view-home" class="space-y-4">
-                
-                <!-- Agenda Cheia Banner 1 -->
-                <div class="bg-gradient-to-r from-slate-900 to-blue-900 text-white p-4 rounded-2xl shadow-xl relative overflow-hidden flex items-center justify-between">
-                    <div class="absolute right-0 top-0 bottom-0 w-24 bg-blue-500/10 rounded-full blur-2xl"></div>
-                    <div class="space-y-1 z-10 pr-2">
-                        <span class="bg-emerald-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Novo</span>
-                        <h2 class="text-base font-bold">Agenda Cheia</h2>
-                        <p class="text-xs text-slate-300">Feche mais orçamentos com scripts de atendimento prontos.</p>
-                    </div>
-                    <button onclick="switchTab('scripts')" class="bg-white text-slate-900 text-xs font-bold px-4 py-2 rounded-xl shadow hover:bg-blue-50 transition shrink-0 z-10">
-                        Ver <i class="fa-solid fa-arrow-right ml-1"></i>
-                    </button>
-                </div>
+      <!-- Sub-tabs -->
+      <div class="bg-[#E5E7EB] rounded-2xl p-1 flex gap-1" role="tablist">
+        <button role="tab" id="subtab-hoje-btn" onclick="switchSubTab('hoje')"
+          class="pill-tab flex-1 py-2 px-3 rounded-xl text-xs font-semibold text-slate-600 flex items-center justify-center gap-1">
+          ☀️ Hoje
+        </button>
+        <button role="tab" id="subtab-orcamentos-btn" onclick="switchSubTab('orcamentos')"
+          class="pill-tab flex-1 py-2 px-3 rounded-xl text-xs font-semibold text-slate-600 flex items-center justify-center gap-1 bg-white shadow-sm text-slate-800 font-bold">
+          📋 Orçamentos
+        </button>
+        <button role="tab" id="subtab-clientes-btn" onclick="switchSubTab('clientes')"
+          class="pill-tab flex-1 py-2 px-3 rounded-xl text-xs font-semibold text-slate-600 flex items-center justify-center gap-1">
+          👥 Clientes
+        </button>
+      </div>
 
-                <!-- Agenda Cheia Banner 2 (Extra) -->
-                <div class="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white p-4 rounded-2xl shadow-xl relative overflow-hidden flex items-center justify-between">
-                    <div class="space-y-1 z-10 pr-2">
-                        <span class="bg-amber-400 text-slate-900 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Seu Extra</span>
-                        <h2 class="text-base font-bold">Respostas para WhatsApp</h2>
-                        <p class="text-xs text-blue-200">Gere gatilhos mentais para responder clientes rápido.</p>
-                    </div>
-                    <button onclick="switchTab('scripts')" class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow hover:bg-blue-500 transition shrink-0 z-10 border border-blue-400">
-                        Abrir <i class="fa-solid fa-arrow-right ml-1"></i>
-                    </button>
-                </div>
+      <!-- Stat cards -->
+      <div class="flex gap-3 overflow-x-auto hide-scrollbar pb-1">
+        <!-- orçado no mês -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 min-w-[140px] flex-1 shrink-0">
+          <p class="text-xs text-slate-500 mb-1">orçado no mês</p>
+          <p class="text-xl font-extrabold text-slate-800" id="stat-orcado">R$ 0,00</p>
+        </div>
+        <!-- aprovado no mês -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 min-w-[140px] flex-1 shrink-0">
+          <p class="text-xs text-slate-500 mb-1">aprovado no mês</p>
+          <p class="text-xl font-extrabold text-emerald-600" id="stat-aprovado">R$ 0,00</p>
+        </div>
+        <!-- sem resposta -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 min-w-[140px] flex-1 shrink-0" id="stat-sem-resposta-card">
+          <p class="text-xs text-slate-500 mb-1">sem resposta</p>
+          <p class="text-xl font-extrabold text-rose-600" id="stat-sem-resposta">0</p>
+        </div>
+      </div>
 
-                <!-- CARDS DE ORÇAMENTO POR ÁUDIO (O Coração do App) -->
-                <div class="bg-gradient-to-b from-blue-600 to-blue-700 text-white p-5 rounded-3xl shadow-xl relative overflow-hidden">
-                    <div class="absolute -right-8 -bottom-8 w-40 h-40 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
-                    
-                    <div class="flex items-center space-x-2 text-blue-200 mb-2">
-                        <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
-                        <span class="text-xs font-bold uppercase tracking-wider">Orçamento por Áudio IA</span>
-                    </div>
-
-                    <h2 class="text-xl font-extrabold mb-1">Dite o orçamento inteiro de uma vez.</h2>
-                    <p class="text-xs text-blue-100 mb-6">Fale nome, telefone, endereço, serviço e itens com valores. Toque em parar para preencher.</p>
-
-                    <!-- Big Mic Button -->
-                    <div class="flex flex-col items-center justify-center my-4">
-                        <button onclick="toggleVoiceRecognition()" id="mic-btn" class="w-24 h-24 bg-white text-blue-600 rounded-full shadow-2xl flex items-center justify-center text-3xl hover:bg-blue-50 active:scale-95 transition transform duration-150 relative">
-                            <i class="fa-solid fa-microphone" id="mic-icon"></i>
-                            <div id="mic-ring" class="absolute inset-0 rounded-full border-4 border-white/50 hidden"></div>
-                        </button>
-                        <span id="mic-status" aria-live="polite" class="text-xs font-semibold text-blue-100 mt-3">Toque para começar a falar</span>
-                    </div>
-
-                    <!-- Manual Button -->
-                    <div class="pt-2">
-                        <button onclick="openQuoteModal()" class="w-full bg-blue-800/80 hover:bg-blue-800 text-white py-3 rounded-2xl font-bold text-sm shadow border border-blue-400/30 transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-pen-to-square"></i> Montar na mão
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Quick Stats / Summary Card -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-                        <span class="text-xs text-slate-400 font-medium">Orçamentos Feitos</span>
-                        <div class="flex items-baseline justify-between mt-2">
-                            <span class="text-2xl font-extrabold text-slate-800" id="stat-total-count">0</span>
-                            <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-arrow-up"></i> Ativo</span>
-                        </div>
-                    </div>
-                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-                        <span class="text-xs text-slate-400 font-medium">Média por Serviço</span>
-                        <div class="flex items-baseline justify-between mt-2">
-                            <span class="text-xl font-extrabold text-blue-600" id="stat-avg-value">R$ 0</span>
-                            <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Split</span>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- HISTORY TAB VIEW -->
-            <div id="view-history" class="space-y-3 hidden">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-sm font-extrabold text-slate-800 uppercase tracking-wider">Histórico de Orçamentos</h2>
-                    <button onclick="clearHistory()" class="text-xs text-rose-600 hover:underline font-semibold">Limpar Tudo</button>
-                </div>
-                
-                <!-- Search Filter -->
-                <div class="relative">
-                    <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400 text-xs"></i>
-                    <input type="text" id="search-history" oninput="filterHistory()" placeholder="Buscar por cliente ou serviço..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-blue-500 shadow-sm">
-                </div>
-
-                <div id="history-list" class="space-y-3">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-
-            <!-- SCRIPTS TAB VIEW -->
-            <div id="view-scripts" class="space-y-3 hidden">
-                <h2 class="text-sm font-extrabold text-slate-800 uppercase tracking-wider">Scripts de Vendas WhatsApp</h2>
-                <p class="text-xs text-slate-500">Toque em qualquer script para copiar e enviar direto no WhatsApp do cliente.</p>
-
-                <div class="space-y-3">
-                    <!-- Script 1 -->
-                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Fechamento de Orçamento</span>
-                            <button onclick="copyScript(1)" class="text-xs text-slate-500 hover:text-blue-600 font-bold flex items-center gap-1">
-                                <i class="fa-solid fa-copy"></i> Copiar
-                            </button>
-                        </div>
-                        <p class="text-xs text-slate-700 leading-relaxed" id="script-1">
-                            Olá [Nome], tudo bem? Segue o orçamento da instalação/manutenção do seu ar-condicionado. Trabalhamos com peças de primeira linha e garantia de serviço. Podemos confirmar a data para esta semana? 🛠️❄️
-                        </p>
-                    </div>
-
-                    <!-- Script 2 -->
-                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Manutenção Preventiva</span>
-                            <button onclick="copyScript(2)" class="text-xs text-slate-500 hover:text-blue-600 font-bold flex items-center gap-1">
-                                <i class="fa-solid fa-copy"></i> Copiar
-                            </button>
-                        </div>
-                        <p class="text-xs text-slate-700 leading-relaxed" id="script-2">
-                            Olá [Nome]! Passando para lembrar que o ar-condicionado precisa de higienização preventiva a cada 6 meses para garantir a saúde da família e economizar energia. Gostaria de agendar uma limpeza essa semana com desconto? 🧼🌬️
-                        </p>
-                    </div>
-
-                    <!-- Script 3 -->
-                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Acompanhamento</span>
-                            <button onclick="copyScript(3)" class="text-xs text-slate-500 hover:text-blue-600 font-bold flex items-center gap-1">
-                                <i class="fa-solid fa-copy"></i> Copiar
-                            </button>
-                        </div>
-                        <p class="text-xs text-slate-700 leading-relaxed" id="script-3">
-                            Olá [Nome], conseguiu dar uma olhada no orçamento que te mandei mais cedo? Fico à disposição caso tenha alguma dúvida sobre os materiais ou parcelamento! 👍
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-        </main>
-
-        <!-- Floating Action Button for New Quote -->
-        <div class="absolute bottom-5 right-5 z-20">
-            <button onclick="openQuoteModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-full shadow-2xl flex items-center space-x-2 text-sm font-bold border-2 border-white/20 transition active:scale-95">
-                <i class="fa-solid fa-microphone"></i>
-                <span>Novo orçamento</span>
+      <!-- SubTab content -->
+      <div id="subtab-content">
+        <!-- Hoje -->
+        <div id="subtab-hoje" class="hidden space-y-3"></div>
+        <!-- Orçamentos com filtros -->
+        <div id="subtab-orcamentos" class="space-y-3">
+          <!-- Filter pills -->
+          <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-1" id="filter-pills">
+            <button onclick="setFilter('todos')" id="filter-todos"
+              class="filter-pill shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-brand-600 text-white border border-brand-600 transition">
+              Todos <span id="filter-todos-count">0</span>
             </button>
+            <button onclick="setFilter('aprovado')" id="filter-aprovado"
+              class="filter-pill shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-600 border border-slate-200 transition">
+              Aprovados <span id="filter-aprovado-count">0</span>
+            </button>
+            <button onclick="setFilter('enviado')" id="filter-enviado"
+              class="filter-pill shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-600 border border-slate-200 transition">
+              Enviados <span id="filter-enviado-count">0</span>
+            </button>
+            <button onclick="setFilter('pendente')" id="filter-pendente"
+              class="filter-pill shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-600 border border-slate-200 transition">
+              Pendentes <span id="filter-pendente-count">0</span>
+            </button>
+          </div>
+          <div id="orcamentos-list" class="space-y-3"></div>
         </div>
-
-    </div>
-
-    <!-- QUOTE FORM MODAL / BUILDER -->
-    <div id="quote-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-        <div class="bg-white w-full max-w-lg max-h-[90vh] sm:rounded-3xl rounded-t-3xl overflow-hidden flex flex-col shadow-2xl animate-in fade-in slide-in-from-bottom duration-200">
-            
-            <!-- Modal Header -->
-            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                <div class="flex items-center space-x-2">
-                    <div class="bg-blue-600 text-white w-7 h-7 rounded-lg flex items-center justify-center text-xs">
-                        <i class="fa-solid fa-calculator"></i>
-                    </div>
-                    <h3 class="text-sm font-extrabold text-slate-800">Montar Orçamento</h3>
-                </div>
-                <button onclick="closeQuoteModal()" class="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-300 transition text-xs">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <!-- Modal Body -->
-            <div class="p-5 overflow-y-auto space-y-4 flex-1">
-
-                <div class="rounded-2xl border border-blue-100 bg-blue-50 p-3 flex items-center gap-3">
-                    <button type="button" onclick="toggleVoiceRecognition()" id="modal-mic-btn" aria-label="Começar a ditar orçamento" class="w-11 h-11 shrink-0 rounded-xl bg-blue-600 text-white shadow flex items-center justify-center"><i class="fa-solid fa-microphone"></i></button>
-                    <div class="min-w-0 flex-1"><p id="modal-voice-status" aria-live="polite" class="text-xs font-bold text-blue-900">Dite o orçamento completo. Toque em parar para preencher os campos.</p><p id="modal-transcript" class="hidden text-[11px] text-slate-500"></p></div>
-                    <button type="button" id="finish-voice-btn" onclick="finishVoiceRecognition()" disabled class="shrink-0 rounded-xl bg-rose-600 px-3 py-2 text-[11px] font-bold text-white opacity-50 disabled:cursor-not-allowed">Parar e preencher</button>
-                </div>
-                
-                <!-- Client Info -->
-                <div class="space-y-3">
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">1. Dados do Cliente</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-600 mb-1">Nome do Cliente</label>
-                            <input type="text" id="client-name" placeholder="Ex: João da Silva" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-600 mb-1">WhatsApp / Telefone</label>
-                            <input type="text" id="client-phone" placeholder="Ex: (11) 99999-9999" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Endereço / Local da Instalação</label>
-                        <input type="text" id="client-address" placeholder="Ex: Rua das Flores, 123 - Apto 42" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
-                    </div>
-                </div>
-
-                <!-- Service Description & Equipment -->
-                <div class="space-y-3">
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">2. Descrição do Aparelho e Serviço</h4>
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Aparelho / Capacidade (BTUs)</label>
-                        <input type="text" id="service-desc" placeholder="Ex: Ar Split Inverter 12000 BTUs" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
-                    </div>
-                </div>
-
-                <!-- Items breakdown (Materials & Labor) -->
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center">
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">3. Materiais e Mão de Obra</h4>
-                        <button onclick="addItemRow()" class="text-xs font-bold text-blue-600 hover:underline">+ Adicionar Item</button>
-                    </div>
-
-                    <div id="items-container" class="space-y-2">
-                        <!-- Item row template -->
-                        <div class="flex items-center space-x-2 item-row">
-                            <input type="text" placeholder="Ex: Tubo de Cobre 1/4 + Cabo PP" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs item-desc focus:outline-none focus:border-blue-500">
-                            <input type="number" placeholder="Valor R$" oninput="calculateTotal()" class="w-24 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs item-price focus:outline-none focus:border-blue-500">
-                            <button onclick="removeItemRow(this)" class="w-8 h-8 text-rose-500 hover:bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
-                                <i class="fa-solid fa-trash-can text-xs"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Total Calculation Box -->
-                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-center justify-between">
-                    <div>
-                        <span class="text-xs font-medium text-blue-600 block">Valor Total do Orçamento</span>
-                        <span class="text-[10px] text-slate-500">Inclui materiais e mão de obra</span>
-                    </div>
-                    <div class="text-xl font-extrabold text-blue-700" id="modal-total-display">R$ 0,00</div>
-                </div>
-
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="p-4 border-t border-slate-100 bg-slate-50 flex items-center space-x-3">
-                <button onclick="closeQuoteModal()" class="w-1/2 bg-white border border-slate-200 text-slate-700 py-3 rounded-2xl font-bold text-xs hover:bg-slate-100 transition">
-                    Cancelar
-                </button>
-                <button onclick="saveAndGenerateQuote()" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-file-pdf"></i> Salvar e Gerar PDF
-                </button>
-            </div>
-
+        <!-- Clientes -->
+        <div id="subtab-clientes" class="hidden space-y-3">
+          <div id="clientes-list" class="space-y-3"></div>
         </div>
+      </div>
     </div>
 
-    <!-- SUCCESS / VIEW QUOTE MODAL -->
-    <div id="result-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-        <div class="bg-white w-full max-w-lg max-h-[90vh] sm:rounded-3xl rounded-t-3xl overflow-hidden flex flex-col shadow-2xl animate-in fade-in slide-in-from-bottom duration-200">
-            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-blue-600 text-white">
-                <div class="flex items-center space-x-2">
-                    <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
-                    <h3 class="text-sm font-extrabold">Orçamento Pronto!</h3>
-                </div>
-                <button onclick="closeResultModal()" class="w-8 h-8 rounded-full bg-blue-700 text-white flex items-center justify-center hover:bg-blue-800 transition text-xs">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            
-            <div class="p-5 overflow-y-auto space-y-4 flex-1 text-xs" id="receipt-preview-content">
-                <!-- Receipt content populated dynamically -->
-            </div>
-
-            <div class="p-4 border-t border-slate-100 bg-slate-50 grid grid-cols-2 gap-2">
-                <button onclick="downloadPDFFromModal()" class="bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-2xl font-bold text-xs shadow transition flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-download"></i> Baixar PDF
-                </button>
-                <button onclick="sendWhatsAppFromModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-2xl font-bold text-xs shadow transition flex items-center justify-center gap-1.5">
-                    <i class="fa-brands fa-whatsapp text-sm"></i> Enviar WhatsApp
-                </button>
-            </div>
+    <!-- ===== VIEW: MEUS DADOS ===== -->
+    <div id="view-meus-dados" class="hidden p-4 space-y-4 fade-up">
+      <div class="flex items-center gap-3">
+        <button onclick="goBack()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 shadow-sm text-slate-600">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </button>
+        <div>
+          <h2 class="text-lg font-extrabold text-slate-800">Meus dados</h2>
+          <p class="text-xs text-slate-500">Aparece no PDF e na mensagem</p>
         </div>
-    </div>
+        <button onclick="openView('pagamento')" class="ml-auto text-brand-600 text-xs font-bold flex items-center gap-1 bg-brand-50 px-3 py-1.5 rounded-xl border border-brand-100">
+          <i class="fa-solid fa-credit-card"></i> Pix/Cartão
+        </button>
+      </div>
 
-    <!-- INSTALL / APK GUIDE MODAL -->
-    <div id="install-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-        <div class="bg-white w-full max-w-lg max-h-[90vh] sm:rounded-3xl rounded-t-3xl overflow-hidden flex flex-col shadow-2xl animate-in fade-in slide-in-from-bottom duration-200">
-            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white">
-                <div class="flex items-center space-x-2">
-                    <i class="fa-solid fa-mobile-screen text-blue-400 text-base"></i>
-                    <h3 class="text-sm font-extrabold">Como gerar o APK e Instalar</h3>
-                </div>
-                <button onclick="closeInstallGuide()" class="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center hover:bg-slate-700 transition text-xs">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <div class="p-5 overflow-y-auto space-y-4 flex-1 text-xs text-slate-700 leading-relaxed">
-                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 space-y-2">
-                    <h4 class="font-bold text-blue-900 text-sm flex items-center gap-2">
-                        <i class="fa-solid fa-robot text-blue-600"></i> Quer enviar o arquivo .APK pronto para ele?
-                    </h4>
-                    <p class="text-slate-600">Como este é um aplicativo web profissional (PWA), você pode transformá-lo em um arquivo APK instalável em 1 minuto:</p>
-                </div>
-
-                <ol class="space-y-3 list-decimal pl-4 font-medium">
-                    <li>Hospede este arquivo HTML gratuitamente no <strong class="text-blue-600">Netlify Drop</strong> ou <strong class="text-blue-600">GitHub Pages</strong> para ter um link web.</li>
-                    <li>Acesse o site gratuito <strong class="text-slate-900">pwabuilder.com</strong> (da Microsoft).</li>
-                    <li>Cole o link do seu site lá e clique em <strong class="text-slate-900">"Generate"</strong>.</li>
-                    <li>O site vai criar o arquivo <strong class="text-blue-600">.APK</strong> pronto para você baixar e enviar para o WhatsApp do seu primo! Ele instala como qualquer aplicativo de loja.</li>
-                </ol>
-
-                <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-emerald-800 text-[11px]">
-                    💡 <strong>Alternativa Rápida (Sem APK):</strong> Se preferir, basta mandar o link direto do app para ele abrir no Chrome do celular, tocar nos 3 pontinhos e selecionar <strong>"Adicionar à tela inicial"</strong>. Funciona exatamente igual a um app nativo, salvando os orçamentos e gerando PDFs!
-                </div>
-            </div>
-
-            <div class="p-4 border-t border-slate-100 bg-slate-50">
-                <button onclick="closeInstallGuide()" class="w-full bg-blue-600 text-white py-3 rounded-2xl font-bold text-xs shadow hover:bg-blue-700 transition">
-                    Entendi, fechar guia
-                </button>
-            </div>
+      <!-- Logo preview -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
+        <div id="logo-preview-wrap" class="w-16 h-16 rounded-xl bg-brand-50 border-2 border-dashed border-brand-200 flex items-center justify-center overflow-hidden shrink-0">
+          <img id="logo-preview-img" src="" alt="Logo" class="hidden w-full h-full object-contain">
+          <span id="logo-preview-initials" class="text-brand-600 font-extrabold text-xl">AR</span>
         </div>
+        <div class="flex-1">
+          <p class="text-xs font-bold text-slate-700 mb-0.5">Sua logo no PDF</p>
+          <p class="text-[11px] text-slate-400 mb-2">Opcional. Se não tiver, vai com as suas iniciais.</p>
+          <label class="cursor-pointer bg-brand-50 border border-brand-200 text-brand-600 text-xs font-bold px-4 py-1.5 rounded-xl inline-block hover:bg-brand-100 transition">
+            <i class="fa-solid fa-upload mr-1"></i> Trocar
+            <input type="file" id="logo-upload" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
+          </label>
+          <button onclick="removeLogo()" class="ml-2 text-xs text-rose-500 font-semibold">Remover</button>
+        </div>
+      </div>
+
+      <!-- Fields -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-50">
+        <div class="p-4 space-y-1">
+          <label class="text-[11px] text-slate-400 font-medium flex items-center gap-1.5"><i class="fa-solid fa-user text-brand-500"></i> Seu nome</label>
+          <input id="perfil-nome" type="text" placeholder="Ex.: Carlos Silva" class="w-full text-sm font-semibold text-slate-800 border-0 outline-none bg-transparent placeholder:text-slate-300">
+        </div>
+        <div class="p-4 space-y-1">
+          <label class="text-[11px] text-slate-400 font-medium flex items-center gap-1.5"><i class="fa-solid fa-store text-brand-500"></i> Nome da empresa</label>
+          <input id="perfil-empresa" type="text" placeholder="Ex.: Frio Center Climatização" class="w-full text-sm font-semibold text-slate-800 border-0 outline-none bg-transparent placeholder:text-slate-300">
+        </div>
+        <div class="p-4 space-y-1">
+          <label class="text-[11px] text-slate-400 font-medium flex items-center gap-1.5"><i class="fa-brands fa-whatsapp text-brand-500"></i> Seu WhatsApp</label>
+          <input id="perfil-whatsapp" type="tel" placeholder="Ex.: (11) 99999-9999" class="w-full text-sm font-semibold text-slate-800 border-0 outline-none bg-transparent placeholder:text-slate-300">
+        </div>
+        <div class="p-4 space-y-1">
+          <label class="text-[11px] text-slate-400 font-medium flex items-center gap-1.5"><i class="fa-solid fa-location-dot text-brand-500"></i> Cidade</label>
+          <input id="perfil-cidade" type="text" placeholder="Ex.: São Paulo - SP" class="w-full text-sm font-semibold text-slate-800 border-0 outline-none bg-transparent placeholder:text-slate-300">
+        </div>
+      </div>
+
+      <button onclick="savePerfil()" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-600/30 text-sm transition active:scale-95">
+        <i class="fa-solid fa-floppy-disk mr-2"></i> Salvar dados
+      </button>
     </div>
 
-    <!-- TOAST NOTIFICATION -->
-    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-4 py-2 rounded-2xl text-xs font-bold shadow-2xl transition-all duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-2">
-        <i class="fa-solid fa-circle-check text-emerald-400"></i>
-        <span id="toast-msg">Ação realizada com sucesso!</span>
+    <!-- ===== VIEW: PIX, CARTÃO E CONDIÇÕES ===== -->
+    <div id="view-pagamento" class="hidden p-4 space-y-4 fade-up">
+      <div class="flex items-center gap-3">
+        <button onclick="goBack()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 shadow-sm text-slate-600">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </button>
+        <div>
+          <h2 class="text-lg font-extrabold text-slate-800">Pix, cartão e condições</h2>
+          <p class="text-xs text-slate-500">Vale pra todo orçamento</p>
+        </div>
+      </div>
+
+      <!-- PIX -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+        <div class="flex items-center gap-2 mb-1">
+          <div class="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center">
+            <i class="fa-solid fa-qrcode text-brand-600"></i>
+          </div>
+          <span class="font-bold text-slate-800">Pix</span>
+        </div>
+        <p class="text-xs text-slate-500">O cliente copia o Pix já com o valor do orçamento, direto no link.</p>
+        <!-- Tipo selector -->
+        <div class="grid grid-cols-3 gap-2" id="pix-tipo-grid">
+          <button onclick="setPixTipo('cpf')" id="pix-tipo-cpf" class="pix-tipo-btn py-2 px-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600 hover:border-brand-400 transition text-center">CPF</button>
+          <button onclick="setPixTipo('cnpj')" id="pix-tipo-cnpj" class="pix-tipo-btn py-2 px-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600 hover:border-brand-400 transition text-center">CNPJ</button>
+          <button onclick="setPixTipo('celular')" id="pix-tipo-celular" class="pix-tipo-btn py-2 px-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600 hover:border-brand-400 transition text-center">Celular</button>
+          <button onclick="setPixTipo('email')" id="pix-tipo-email" class="pix-tipo-btn py-2 px-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600 hover:border-brand-400 transition text-center">E-mail</button>
+          <button onclick="setPixTipo('aleatoria')" id="pix-tipo-aleatoria" class="pix-tipo-btn py-2 px-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600 hover:border-brand-400 transition text-center col-span-2">Aleatória</button>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+          <i class="fa-solid fa-key text-slate-400 text-sm"></i>
+          <input id="pag-pix-chave" type="text" placeholder="Sua chave Pix" class="flex-1 text-sm bg-transparent outline-none text-slate-800 placeholder:text-slate-300">
+        </div>
+      </div>
+
+      <!-- CARTÃO -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+        <div class="flex items-center gap-2 mb-1">
+          <div class="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center">
+            <i class="fa-solid fa-credit-card text-brand-600"></i>
+          </div>
+          <span class="font-bold text-slate-800">Cartão</span>
+        </div>
+        <div class="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5">
+          <i class="fa-solid fa-credit-card text-slate-400"></i>
+          <div class="flex-1">
+            <p class="text-xs font-bold text-slate-800">Parcela em até</p>
+            <p class="text-[11px] text-slate-500">no cartão</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="adjustParcelas(-1)" class="w-7 h-7 rounded-lg bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-300">−</button>
+            <span id="pag-parcelas-display" class="text-sm font-extrabold text-brand-600 w-8 text-center">12x</span>
+            <button onclick="adjustParcelas(1)" class="w-7 h-7 rounded-lg bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-300">+</button>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+          <i class="fa-solid fa-percent text-slate-400 text-sm"></i>
+          <input id="pag-acrescimo" type="number" min="0" max="100" step="0.1" placeholder="0 = sem juros" class="flex-1 text-sm bg-transparent outline-none text-slate-800 placeholder:text-slate-300">
+          <span class="text-xs text-slate-400">Acréscimo %</span>
+        </div>
+      </div>
+
+      <!-- GARANTIA E CONDIÇÕES -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+        <div class="flex items-center gap-2 mb-1">
+          <div class="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center">
+            <i class="fa-solid fa-file-contract text-brand-600"></i>
+          </div>
+          <span class="font-bold text-slate-800">Garantia e condições</span>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+          <i class="fa-solid fa-shield-halved text-slate-400 text-sm"></i>
+          <input id="pag-garantia" type="text" placeholder="90 dias de garantia na instalação" class="flex-1 text-sm bg-transparent outline-none text-slate-800 placeholder:text-slate-300">
+        </div>
+        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+          <i class="fa-solid fa-calendar text-slate-400 text-sm"></i>
+          <input id="pag-validade" type="number" min="1" max="365" placeholder="7" class="flex-1 text-sm bg-transparent outline-none text-slate-800 placeholder:text-slate-300">
+          <span class="text-xs text-slate-400">dias de validade</span>
+        </div>
+      </div>
+
+      <button onclick="savePagamento()" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-600/30 text-sm transition active:scale-95">
+        <i class="fa-solid fa-floppy-disk mr-2"></i> Salvar configurações
+      </button>
     </div>
 
-    <!-- JAVASCRIPT APP LOGIC -->
-    <script>
-        // State Management
-        let quotes = [];
-        try { quotes = JSON.parse(localStorage.getItem('ar_orcamentos') || '[]'); } catch (error) { console.warn('Histórico local inválido.', error); }
-        let currentActiveQuote = null;
-        let recognition = null;
-        let isListening = false;
-        let voiceTranscript = '';
-        let voiceSessionPrefix = '';
-        let voiceFinalizeRequested = false;
+  </main>
 
-        // Init on Load
-        window.onload = function() {
-            updateHeaderDate();
-            renderHistory();
-            updateStats();
-            initSpeechRecognition();
-            if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./service-worker.js').catch(error => console.warn('Service worker não registrado:', error));
-        };
+  <!-- ===== FAB ===== -->
+  <div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40" id="fab-wrap">
+    <button onclick="openQuoteModal()" class="bg-brand-600 hover:bg-brand-700 text-white px-7 py-4 rounded-full shadow-2xl shadow-brand-600/40 flex items-center gap-2.5 font-bold text-sm transition active:scale-95 border-2 border-white/20">
+      <i class="fa-solid fa-microphone text-base"></i>
+      <span>Novo orçamento</span>
+    </button>
+  </div>
 
-        function updateHeaderDate() {
-            const options = { weekday: 'long', day: 'numeric', month: 'long' };
-            const today = new Date().toLocaleDateString('pt-BR', options);
-            document.getElementById('current-date-label').textContent = today;
-            
-            // Random technician greeting simulation or user name
-            document.getElementById('header-greeting').textContent = "Bom dia, Técnico";
-        }
+</div><!-- /app -->
 
-        // Update Dashboard Stats & Counters
-        function updateStats() {
-            const count = quotes.length;
-            document.getElementById('history-count').textContent = count;
-            document.getElementById('stat-total-count').textContent = count;
+<!-- ========================================================
+     MODAL: NOVO ORÇAMENTO
+     ======================================================== -->
+<div id="quote-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end justify-center hidden" onclick="closeQuoteModalOutside(event)">
+  <div class="bg-white w-full max-w-lg rounded-t-3xl max-h-[92vh] flex flex-col modal-sheet shadow-2xl" onclick="event.stopPropagation()">
+    <!-- Modal header -->
+    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 rounded-t-3xl shrink-0">
+      <div class="flex items-center gap-2">
+        <div class="bg-brand-600 text-white w-7 h-7 rounded-lg flex items-center justify-center">
+          <i class="fa-solid fa-calculator text-xs"></i>
+        </div>
+        <h3 class="text-sm font-extrabold text-slate-800">Novo Orçamento</h3>
+      </div>
+      <button onclick="closeQuoteModal()" class="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-300 text-xs">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
 
-            if (count > 0) {
-                let totalSum = quotes.reduce((acc, q) => acc + q.total, 0);
-                let avg = totalSum / count;
-                document.getElementById('stat-avg-value').textContent = `R$ ${avg.toFixed(0)}`;
-            } else {
-                document.getElementById('stat-avg-value').textContent = `R$ 0`;
-            }
-        }
+    <!-- Modal body (scrollable) -->
+    <div class="overflow-y-auto flex-1 p-5 space-y-4 hide-scrollbar">
 
-        function switchTab(tabId) {
-            ['home', 'history', 'scripts'].forEach(t => {
-                document.getElementById('view-' + t).classList.add('hidden');
-                document.getElementById('tab-' + t).className = "px-4 py-2 rounded-full text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition flex items-center gap-1.5";
-            });
-            document.getElementById('view-' + tabId).classList.remove('hidden');
-            document.getElementById('tab-' + tabId).className = "px-4 py-2 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md shadow-blue-500/20 transition flex items-center gap-1.5";
-        }
+      <!-- Voice block -->
+      <div class="rounded-2xl border border-brand-100 bg-brand-50 p-3 flex items-center gap-3">
+        <button type="button" onclick="toggleVoice()" id="modal-mic-btn" aria-label="Gravar voz"
+          class="w-11 h-11 shrink-0 rounded-xl bg-brand-600 text-white shadow flex items-center justify-center transition">
+          <i class="fa-solid fa-microphone" id="modal-mic-icon"></i>
+        </button>
+        <div class="min-w-0 flex-1">
+          <p id="modal-voice-status" class="text-xs font-bold text-brand-900">Dite o orçamento completo. Toque em parar para preencher.</p>
+        </div>
+        <button type="button" id="finish-voice-btn" onclick="finishVoice()" disabled
+          class="shrink-0 rounded-xl bg-rose-600 px-3 py-2 text-[11px] font-bold text-white opacity-50 disabled:cursor-not-allowed transition">
+          Parar e preencher
+        </button>
+      </div>
 
-        // Continuous speech capture: fill the form only after the user stops.
-        function initSpeechRecognition() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) return;
-            recognition = new SpeechRecognition();
-            recognition.lang = 'pt-BR';
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.onstart = function() {
-                isListening = true;
-                document.getElementById('mic-btn').classList.add('bg-blue-50', 'ring-4', 'ring-blue-300');
-                document.getElementById('mic-ring').classList.remove('hidden');
-                document.getElementById('mic-status').textContent = 'Ouvindo tudo. Toque em Parar e preencher quando terminar.';
-                document.getElementById('modal-voice-status').textContent = 'Ouvindo. Toque em Parar e preencher quando terminar de falar.';
-                document.getElementById('modal-mic-btn').classList.add('bg-rose-600');
-                document.getElementById('finish-voice-btn').disabled = false;
-                document.getElementById('finish-voice-btn').classList.remove('opacity-50');
-            };
-            recognition.onresult = function(event) {
-                const sessionText = Array.from(event.results).map(result => result[0].transcript).join(' ').replace(/\s+/g, ' ').trim();
-                voiceTranscript = [voiceSessionPrefix, sessionText].filter(Boolean).join(' ').trim();
-            };
-            recognition.onerror = function(event) {
-                if (event.error !== 'no-speech' && event.error !== 'aborted') {
-                    showToast(event.error === 'not-allowed' ? 'Permita o acesso ao microfone nas configurações do navegador.' : 'Falha no reconhecimento. Tente falar novamente.');
-                }
-            };
-            recognition.onend = function() {
-                const transcript = voiceTranscript.trim();
-                stopVoiceRecognition();
-                if (transcript) parseVoiceTranscript(transcript);
-                else {
-                    document.getElementById('modal-voice-status').textContent = 'Não consegui ouvir. Toque no microfone para tentar de novo.';
-                    showToast('Nenhuma fala foi reconhecida. Tente novamente.');
-                }
-            };
-        }
+      <!-- 1. Dados do Cliente -->
+      <div class="space-y-3">
+        <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">1. Dados do Cliente</h4>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 mb-1">Nome do Cliente</label>
+            <input type="text" id="f-nome" placeholder="João da Silva" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 mb-1">WhatsApp / Telefone</label>
+            <input type="text" id="f-telefone" placeholder="(11) 99999-9999" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-500 mb-1">Endereço</label>
+          <input type="text" id="f-endereco" placeholder="Rua das Flores, 123 - Apto 42" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
+        </div>
+      </div>
 
-        function toggleVoiceRecognition() {
-            if (!recognition) {
-                showToast('Seu navegador não oferece reconhecimento de voz. Preencha o orçamento manualmente.');
-                openQuoteModal();
-                return;
-            }
-            if (isListening) { finishVoiceRecognition(); return; }
-            try {
-                openQuoteModal();
-                voiceTranscript = '';
-                recognition.start();
-            } catch (error) {
-                showToast('Não foi possível iniciar o microfone. Verifique a permissão do navegador.');
-            }
-        }
+      <!-- 2. Aparelho -->
+      <div class="space-y-3">
+        <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">2. Aparelho / Serviço</h4>
+        <input type="text" id="f-aparelho" placeholder="Split 12.000 BTUs - Instalação" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
+      </div>
 
-        function finishVoiceRecognition() {
-            if (recognition && isListening) recognition.stop();
-        }
+      <!-- 3. Itens -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">3. Materiais e Mão de Obra</h4>
+          <button onclick="addItemRow()" class="text-[11px] font-bold text-brand-600 flex items-center gap-1 hover:text-brand-700">
+            <i class="fa-solid fa-plus"></i> Adicionar
+          </button>
+        </div>
+        <div id="items-container" class="space-y-2"></div>
 
-        function stopVoiceRecognition() {
-            isListening = false;
-            document.getElementById('mic-btn').classList.remove('bg-blue-50', 'ring-4', 'ring-blue-300');
-            document.getElementById('mic-ring').classList.add('hidden');
-            document.getElementById('mic-status').textContent = 'Fala capturada. Confira o or?amento preenchido.';
-            document.getElementById('modal-mic-btn').classList.remove('bg-rose-600');
-            document.getElementById('finish-voice-btn').disabled = true;
-            document.getElementById('finish-voice-btn').classList.add('opacity-50');
-            document.getElementById('modal-voice-status').textContent = 'Separando os dados da sua fala...';
-        }
+        <!-- Total -->
+        <div class="bg-brand-50 border border-brand-100 rounded-xl px-4 py-3 flex justify-between items-center">
+          <span class="text-sm font-bold text-slate-600">Total</span>
+          <span class="text-lg font-extrabold text-brand-600" id="total-display">R$ 0,00</span>
+        </div>
+      </div>
 
-        function parseVoiceTranscript(text) {
-            const original = text.trim();
-            const normalized = original.normalize('NFD').replace(/\p{M}/gu, '');
-            const markers = [
-                /\b(?:meu nome (?:e|eh)|me chamo|nome(?: do cliente)?(?: e| eh)?|cliente(?: e| eh)?|orcamento para)\s*[:, -]?/i,
-                /\b(?:telefone|celular|whatsapp|whats|numero)\s*(?:e|eh|:)?\s*/i,
-                /\b(?:endereco|local(?: da instalacao)?|rua|avenida|av\.)\s*(?:e|eh|:)?\s*/i,
-                /\b(?:descricao(?: do servico| do aparelho| do ar)?|servico|aparelho|instalacao de|ar condicionado|split|inverter)\s*(?:e|eh|:)?\s*/i,
-                /\b(?:materiais?|material|itens?|pecas?|mao(?: de)? obra|mao de obra)\s*[:, -]?/i
-            ];
-            function nextMarkerIndex(from) {
-                let end = normalized.length;
-                for (const marker of markers) {
-                    const search = new RegExp(marker.source, 'ig');
-                    search.lastIndex = from;
-                    const found = search.exec(normalized);
-                    if (found && found.index > from && found.index < end) end = found.index;
-                }
-                return end;
-            }
-            function section(marker, excludedMarkers) {
-                const match = marker.exec(normalized);
-                if (!match) return '';
-                const from = match.index + match[0].length;
-                let to = normalized.length;
-                for (const stop of excludedMarkers) {
-                    const search = new RegExp(stop.source, 'ig');
-                    search.lastIndex = from;
-                    const found = search.exec(normalized);
-                    if (found && found.index < to) to = found.index;
-                }
-                return original.slice(from, to).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
-            }
-            const nameMarker = /\b(?:meu nome (?:e|eh)|me chamo|nome(?: do cliente)?(?: e| eh)?|cliente(?: e| eh)?|orcamento para)\s*[:, -]?/i;
-            const phoneMarker = /\b(?:telefone|celular|whatsapp|whats|numero)\s*(?:e|eh|:)?\s*/i;
-            const addressMarker = /\b(?:endereco|local(?: da instalacao)?|rua|avenida|av\.)\s*(?:e|eh|:)?\s*/i;
-            const serviceMarker = /\b(?:descricao(?: do servico| do aparelho| do ar)?|servico|aparelho|instalacao de|ar condicionado|split|inverter)\s*(?:e|eh|:)?\s*/i;
-            const itemMarker = /\b(?:materiais?|material|itens?|pecas?|mao(?: de)? obra|mao de obra)\s*[:, -]?/i;
-            const nameStops = [phoneMarker, addressMarker, serviceMarker, itemMarker];
-            let clientName = section(nameMarker, nameStops);
-            if (!clientName) {
-                const firstStop = nextMarkerIndex(0);
-                clientName = original.slice(0, firstStop).replace(/^.*?\borcamento\s+(?:para\s+)?/i, '').replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
-            }
-            const phoneText = section(phoneMarker, [addressMarker, serviceMarker, itemMarker]);
-            const phoneDigits = (phoneText.match(/\+?\d[\d\s().-]{7,}\d/) || [])[0] || '';
-            const address = section(addressMarker, [phoneMarker, serviceMarker, itemMarker]);
-            let service = section(serviceMarker, [phoneMarker, addressMarker, itemMarker]).replace(/^(?:(?:de|do|da|e|eh|o|a|aparelho|servico)\s+)+/i, '');
-            if (!service) {
-                const serviceStart = normalized.search(/\b(?:ar condicionado|split|inverter)\b/i);
-                if (serviceStart >= 0) service = original.slice(serviceStart, nextMarkerIndex(serviceStart)).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
-            }
-            const firstServiceMarker = serviceMarker.exec(normalized);
-            if (firstServiceMarker && /^instalacao de/i.test(firstServiceMarker[0])) service = 'Instalação de ' + service;
+    </div>
 
-            const amountPattern = /(?:r\$\s*(\d+(?:[.,]\d{1,2})?|(?:zero|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil)(?:\s+(?:e\s+)?(?:um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil))*))|((?:\d+(?:[.,]\d{1,2})?|(?:zero|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil)(?:\s+(?:e\s+)?(?:um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil))*))\s*(?:reais?|r\$)?(?=\s*(?:[,;]|$|e?\s*(?:mao(?: de)? obra|materiais?|itens?)))/gi;
-            function spokenNumber(value) {
-                if (/^\d/.test(value)) return Number(value.replace(',', '.'));
-                const values = { zero:0, um:1, uma:1, dois:2, duas:2, tres:3, quatro:4, cinco:5, seis:6, sete:7, oito:8, nove:9, dez:10, onze:11, doze:12, treze:13, quatorze:14, catorze:14, quinze:15, dezesseis:16, dezessete:17, dezoito:18, dezenove:19, vinte:20, trinta:30, quarenta:40, cinquenta:50, sessenta:60, setenta:70, oitenta:80, noventa:90, cem:100, cento:100, duzentos:200, trezentos:300, quatrocentos:400, quinhentos:500, seiscentos:600, setecentos:700, oitocentos:800, novecentos:900 };
-                let total = 0, group = 0;
-                value.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').split(/\s+|\be\b/).filter(Boolean).forEach(word => {
-                    if (word === 'mil') { total += (group || 1) * 1000; group = 0; }
-                    else if (values[word] != null) group += values[word];
-                });
-                return total + group;
-            }
-            const itemMatches = [];
-            let itemStart = normalized.search(itemMarker);
-            // Fallback: se nao encontrou marcador de item, busca valores apos o campo de servico
-            if (itemStart < 0) { const _svcM = new RegExp(serviceMarker.source, 'i').exec(normalized); if (_svcM) itemStart = _svcM.index + _svcM[0].length; }
-            amountPattern.lastIndex = 0;
-            let amount;
-            while ((amount = amountPattern.exec(normalized)) !== null) {
-                if (itemStart < 0 || amount.index < itemStart) continue;
-                const from = Math.max(itemStart, itemMatches.length ? itemMatches[itemMatches.length - 1].end : itemStart);
-                let desc = original.slice(from, amount.index).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').replace(/^(?:(?:e|tambem|material|materiais|item|itens|pecas|descricao|servico|aparelho)\s*:?\s*)+/i, '').replace(/\s+(?:por|a)\s*$/i, '').trim();
-                const amountValue = amount[1] || amount[2]?.replace(/\s*(?:reais?|r\$)$/i, '').trim();
-                if (desc && amountValue) itemMatches.push({ desc, price: spokenNumber(amountValue), end: amountPattern.lastIndex });
-            }
-            const items = itemMatches.map(({ desc, price }) => ({ desc, price }));
-            const container = document.getElementById('items-container');
-            container.innerHTML = '';
-            if (items.length) items.forEach(item => addItemRowWithData(item.desc, item.price));
-            else addItemRow();
-            document.getElementById('client-name').value = clientName;
-            document.getElementById('client-phone').value = phoneDigits || phoneText;
-            document.getElementById('client-address').value = address;
-            document.getElementById('service-desc').value = service;
-            calculateTotal();
-            document.getElementById('modal-voice-status').textContent = 'Fala separada nos campos. Confira e corrija o que precisar antes de salvar.';
-            showToast(items.length ? 'Fala organizada em cliente, servi?o e itens. Confira o or?amento.' : 'Dados organizados. Adicione os valores dos itens antes de salvar.');
-            try {
-                localStorage.setItem('ar_orcamento_rascunho', JSON.stringify({ 'client-name': clientName, 'client-phone': phoneDigits || phoneText, 'client-address': address, 'service-desc': service, items }));
-            } catch (error) { console.warn('N?o foi poss?vel guardar o rascunho.', error); }
-        }
+    <!-- Modal footer -->
+    <div class="p-4 border-t border-slate-100 flex gap-3 shrink-0">
+      <button onclick="closeQuoteModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">
+        Cancelar
+      </button>
+      <button onclick="saveAndGeneratePDF()" class="flex-1 py-3 rounded-2xl bg-brand-600 text-white text-sm font-bold shadow shadow-brand-600/30 hover:bg-brand-700 transition active:scale-95">
+        <i class="fa-solid fa-file-pdf mr-1"></i> Salvar e Gerar PDF
+      </button>
+    </div>
+  </div>
+</div>
 
-        // Quote Modal Functions
-        function openQuoteModal() {
-            document.getElementById('quote-modal').classList.remove('hidden');
-            try {
-                const draft = JSON.parse(localStorage.getItem('ar_orcamento_rascunho') || 'null');
-                if (draft) {
-                    ['client-name', 'client-phone', 'client-address', 'service-desc'].forEach(id => {
-                        const field = document.getElementById(id);
-                        if (!field.value && draft[id]) field.value = draft[id];
-                    });
-                    if (draft.items?.length) {
-                        const container = document.getElementById('items-container');
-                        container.innerHTML = '';
-                        draft.items.forEach(item => addItemRowWithData(item.desc, item.price));
-                        calculateTotal();
-                    }
-                }
-            } catch (error) { console.warn('Rascunho local inválido.', error); }
-            // Reset if clean
-            if(document.querySelectorAll('.item-row').length === 0) {
-                addItemRow();
-            }
-        }
+<!-- ========================================================
+     MODAL: RESULTADO DO ORÇAMENTO
+     ======================================================== -->
+<div id="result-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end justify-center hidden" onclick="closeResultModalOutside(event)">
+  <div class="bg-white w-full max-w-lg rounded-t-3xl max-h-[92vh] flex flex-col modal-sheet shadow-2xl" onclick="event.stopPropagation()">
+    <!-- Green header -->
+    <div class="bg-gradient-to-br from-emerald-500 to-teal-600 text-white px-5 py-5 rounded-t-3xl shrink-0">
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-circle-check text-2xl"></i>
+          <h3 class="text-lg font-extrabold">Orçamento Pronto!</h3>
+        </div>
+        <button onclick="closeResultModal()" class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs hover:bg-white/30">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <p class="text-sm text-emerald-100" id="result-num">Orçamento #001</p>
+    </div>
 
-        function closeQuoteModal() {
-            if (isListening) finishVoiceRecognition();
-            document.getElementById('quote-modal').classList.add('hidden');
-        }
+    <!-- Preview -->
+    <div class="overflow-y-auto flex-1 p-5 space-y-4 hide-scrollbar">
+      <!-- Técnico -->
+      <div class="bg-slate-50 rounded-2xl p-4 flex items-center gap-3">
+        <div id="result-logo-wrap" class="w-12 h-12 rounded-xl bg-brand-100 flex items-center justify-center overflow-hidden shrink-0">
+          <span id="result-logo-initials" class="text-brand-600 font-extrabold text-sm">AR</span>
+          <img id="result-logo-img" src="" alt="Logo" class="hidden w-full h-full object-contain">
+        </div>
+        <div>
+          <p class="font-bold text-slate-800 text-sm" id="result-tecnico-nome">Técnico</p>
+          <p class="text-xs text-slate-500" id="result-tecnico-info">—</p>
+        </div>
+      </div>
 
-        function addItemRow() {
-            const container = document.getElementById('items-container');
-            const div = document.createElement('div');
-            div.className = "flex items-center space-x-2 item-row";
-            div.innerHTML = `
-                <input type="text" placeholder="Ex: Cabo PP 3x2.5mm" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs item-desc focus:outline-none focus:border-blue-500">
-                <input type="number" placeholder="Valor R$" oninput="calculateTotal()" class="w-24 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs item-price focus:outline-none focus:border-blue-500">
-                <button onclick="removeItemRow(this)" class="w-8 h-8 text-rose-500 hover:bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
-                    <i class="fa-solid fa-trash-can text-xs"></i>
-                </button>
-            `;
-            container.appendChild(div);
-        }
+      <!-- Cliente -->
+      <div class="space-y-1">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Cliente</p>
+        <p class="font-bold text-slate-800" id="result-cliente-nome">—</p>
+        <p class="text-xs text-slate-500" id="result-cliente-info">—</p>
+      </div>
 
-        function addItemRowWithData(desc, price) {
-            const container = document.getElementById('items-container');
-            const div = document.createElement('div');
-            div.className = "flex items-center space-x-2 item-row";
-            div.innerHTML = `
-                <input type="text" value="${desc}" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs item-desc focus:outline-none focus:border-blue-500">
-                <input type="number" value="${price}" oninput="calculateTotal()" class="w-24 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs item-price focus:outline-none focus:border-blue-500">
-                <button onclick="removeItemRow(this)" class="w-8 h-8 text-rose-500 hover:bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
-                    <i class="fa-solid fa-trash-can text-xs"></i>
-                </button>
-            `;
-            container.appendChild(div);
-        }
+      <!-- Itens -->
+      <div>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Itens</p>
+        <div id="result-items" class="space-y-1"></div>
+        <div class="mt-3 bg-brand-50 border border-brand-100 rounded-xl px-4 py-3 flex justify-between">
+          <span class="font-bold text-slate-700">Total</span>
+          <span class="font-extrabold text-brand-600 text-lg" id="result-total">R$ 0,00</span>
+        </div>
+      </div>
 
-        function removeItemRow(btn) {
-            const rows = document.querySelectorAll('.item-row');
-            if (rows.length > 1) {
-                btn.closest('.item-row').remove();
-                calculateTotal();
-            } else {
-                showToast("O orçamento precisa de pelo menos 1 item.");
-            }
-        }
+      <!-- Pagamento -->
+      <div id="result-pagamento-block" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-2">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pagamento</p>
+        <div id="result-pix-block" class="hidden flex items-center gap-2 text-sm text-slate-700">
+          <i class="fa-solid fa-qrcode text-brand-600"></i>
+          <span id="result-pix-info"></span>
+        </div>
+        <div id="result-cartao-block" class="hidden flex items-center gap-2 text-sm text-slate-700">
+          <i class="fa-solid fa-credit-card text-brand-600"></i>
+          <span id="result-cartao-info"></span>
+        </div>
+        <div id="result-garantia-block" class="hidden flex items-center gap-2 text-sm text-slate-700">
+          <i class="fa-solid fa-shield-halved text-brand-600"></i>
+          <span id="result-garantia-info"></span>
+        </div>
+        <div id="result-validade-block" class="hidden flex items-center gap-2 text-sm text-slate-700">
+          <i class="fa-solid fa-calendar text-brand-600"></i>
+          <span id="result-validade-info"></span>
+        </div>
+      </div>
 
-        function calculateTotal() {
-            let total = 0;
-            document.querySelectorAll('.item-price').forEach(input => {
-                const val = parseFloat(input.value) || 0;
-                total += val;
-            });
-            document.getElementById('modal-total-display').textContent = `R$ ${total.toFixed(2)}`;
-            return total;
-        }
+      <!-- Ações de status -->
+      <div class="flex gap-2">
+        <button onclick="marcarAprovado()" id="btn-aprovar" class="flex-1 py-2.5 rounded-xl border-2 border-emerald-500 text-emerald-600 font-bold text-xs hover:bg-emerald-50 transition">
+          <i class="fa-solid fa-thumbs-up mr-1"></i> Aprovado
+        </button>
+        <button onclick="excluirAtual()" class="flex-1 py-2.5 rounded-xl border-2 border-rose-200 text-rose-500 font-bold text-xs hover:bg-rose-50 transition">
+          <i class="fa-solid fa-trash mr-1"></i> Excluir
+        </button>
+      </div>
+    </div>
 
-        // Save & Generate Quote
-        function saveAndGenerateQuote() {
-            if (isListening) { finishVoiceRecognition(); showToast('Fala encerrada e campos preenchidos. Toque em salvar novamente.'); return; }
-            const clientName = document.getElementById('client-name').value.trim();
-            if (!clientName) { showToast('Informe o nome do cliente para salvar o orçamento.'); document.getElementById('client-name').focus(); return; }
-            const clientPhone = document.getElementById('client-phone').value.trim() || "(00) 00000-0000";
-            const clientAddress = document.getElementById('client-address').value.trim() || "Endereço não informado";
-            const serviceDesc = document.getElementById('service-desc').value.trim() || "Instalação de Ar-Condicionado Split";
-            
-            let items = [];
-            document.querySelectorAll('.item-row').forEach(row => {
-                const desc = row.querySelector('.item-desc').value.trim() || "Item";
-                const price = parseFloat(row.querySelector('.item-price').value) || 0;
-                items.push({ desc, price });
-            });
+    <!-- Footer botões -->
+    <div class="p-4 border-t border-slate-100 flex gap-3 shrink-0">
+      <button onclick="downloadPDF()" class="flex-1 py-3 rounded-2xl border-2 border-brand-600 text-brand-600 font-bold text-sm hover:bg-brand-50 transition flex items-center justify-center gap-2 active:scale-95">
+        <i class="fa-solid fa-download"></i> Baixar PDF
+      </button>
+      <button onclick="sendWhatsApp()" class="flex-1 py-3 rounded-2xl bg-emerald-500 text-white font-bold text-sm shadow shadow-emerald-500/30 hover:bg-emerald-600 transition flex items-center justify-center gap-2 active:scale-95">
+        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+      </button>
+    </div>
+  </div>
+</div>
 
-            const total = calculateTotal();
-            const date = new Date().toLocaleDateString('pt-BR');
-            const id = 'ORC-' + Math.floor(1000 + Math.random() * 9000);
+<!-- ========================================================
+     TOAST
+     ======================================================== -->
+<div id="toast" class="fixed bottom-28 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white text-xs font-semibold px-5 py-3 rounded-full shadow-xl hidden transition-all">
+  Mensagem
+</div>
 
-            const quoteObj = { id, clientName, clientPhone, clientAddress, serviceDesc, items, total, date };
-            
-            quotes.unshift(quoteObj);
-            localStorage.setItem('ar_orcamentos', JSON.stringify(quotes));
-            localStorage.removeItem('ar_orcamento_rascunho');
-            ['client-name', 'client-phone', 'client-address', 'service-desc'].forEach(fieldId => document.getElementById(fieldId).value = '');
-            document.getElementById('items-container').innerHTML = '';
-            addItemRow();
-            calculateTotal();
+<!-- ========================================================
+     JAVASCRIPT
+     ======================================================== -->
+<script>
+'use strict';
 
-            closeQuoteModal();
-            renderHistory();
-            updateStats();
-            
-            showQuoteResult(quoteObj);
-            showToast("Orçamento salvo com sucesso!");
-        }
+// ===================== STATE =====================
+let orcamentos = [];
+let perfil = {};
+let pagamento = {};
+let currentFilter = 'todos';
+let currentSubTab = 'orcamentos';
+let currentView = 'orcamentos';
+let previousView = 'orcamentos';
+let currentOrcamento = null; // used in result modal
+let voiceRecognition = null;
+let isListening = false;
+let lastTranscript = '';
+let parcelasCount = 12;
+let pixTipoSel = 'cpf';
 
-        // Result / Receipt Preview Modal
-        function showQuoteResult(quote) {
-            currentActiveQuote = quote;
-            const content = document.getElementById('receipt-preview-content');
-            
-            let itemsHtml = quote.items.map(i => `
-                <div class="flex justify-between py-1 border-b border-slate-100 text-slate-700">
-                    <span>${i.desc}</span>
-                    <strong class="text-slate-900">R$ ${i.price.toFixed(2)}</strong>
-                </div>
-            `).join('');
+// ===================== INIT =====================
+function init() {
+  loadData();
+  renderAll();
+  updateAvatar();
+  renderLogoPreview();
+  loadPerfilForm();
+  loadPagamentoForm();
+}
 
-            content.innerHTML = `
-                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                    <div class="flex justify-between items-center border-b border-slate-200 pb-2">
-                        <div>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-blue-600">Ar no Preço Certo</span>
-                            <h4 class="font-extrabold text-sm text-slate-800">${quote.id}</h4>
-                        </div>
-                        <span class="text-xs text-slate-500">${quote.date}</span>
-                    </div>
-                    
-                    <div class="space-y-1 text-xs">
-                        <p><strong class="text-slate-600">Cliente:</strong> ${quote.clientName}</p>
-                        <p><strong class="text-slate-600">Tel:</strong> ${quote.clientPhone}</p>
-                        <p><strong class="text-slate-600">Local:</strong> ${quote.clientAddress}</p>
-                        <p><strong class="text-slate-600">Serviço:</strong> ${quote.serviceDesc}</p>
-                    </div>
+function loadData() {
+  try { orcamentos = JSON.parse(localStorage.getItem('ar_orcamentos') || '[]'); } catch(e) { orcamentos = []; }
+  try { perfil = JSON.parse(localStorage.getItem('ar_perfil') || '{}'); } catch(e) { perfil = {}; }
+  try { pagamento = JSON.parse(localStorage.getItem('ar_pagamento') || '{}'); } catch(e) { pagamento = {}; }
+  parcelasCount = pagamento.parcelas || 12;
+  pixTipoSel = pagamento.pixTipo || 'cpf';
+}
 
-                    <div class="pt-2">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Itens do Orçamento</span>
-                        <div class="space-y-1 max-h-32 overflow-y-auto pr-1">
-                            ${itemsHtml}
-                        </div>
-                    </div>
+function saveData() {
+  localStorage.setItem('ar_orcamentos', JSON.stringify(orcamentos));
+  localStorage.setItem('ar_perfil', JSON.stringify(perfil));
+  localStorage.setItem('ar_pagamento', JSON.stringify(pagamento));
+}
 
-                    <div class="flex justify-between items-center pt-3 border-t border-slate-200 text-sm">
-                        <span class="font-extrabold text-slate-800">Total Geral:</span>
-                        <span class="font-extrabold text-blue-600 text-base">R$ ${quote.total.toFixed(2)}</span>
-                    </div>
-                </div>
-            `;
+// ===================== NAVIGATION =====================
+function openView(v) {
+  previousView = currentView;
+  currentView = v;
+  ['orcamentos','meus-dados','pagamento'].forEach(id => {
+    const el = document.getElementById('view-' + id);
+    if (el) el.classList.add('hidden');
+  });
+  const target = document.getElementById('view-' + v);
+  if (target) target.classList.remove('hidden');
+  document.getElementById('fab-wrap').classList.toggle('hidden', v !== 'orcamentos');
+  document.getElementById('main-scroll').scrollTop = 0;
+}
 
-            document.getElementById('result-modal').classList.remove('hidden');
-        }
+function goBack() {
+  openView(previousView === currentView ? 'orcamentos' : previousView);
+}
 
-        function closeResultModal() {
-            document.getElementById('result-modal').classList.add('hidden');
-        }
+// ===================== AVATAR =====================
+function updateAvatar() {
+  const initials = getInitials(perfil.nome || '');
+  document.getElementById('avatar-initials').textContent = initials || 'AR';
+  const logoEl = document.getElementById('avatar-logo');
+  if (perfil.logo) {
+    logoEl.src = perfil.logo;
+    logoEl.classList.remove('hidden');
+    document.getElementById('avatar-initials').classList.add('hidden');
+  } else {
+    logoEl.classList.add('hidden');
+    document.getElementById('avatar-initials').classList.remove('hidden');
+  }
+}
 
-        // Render History List
-        function renderHistory() {
-            const listEl = document.getElementById('history-list');
-            updateStats();
+function getInitials(name) {
+  if (!name) return 'AR';
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  return name.substring(0, 2).toUpperCase();
+}
 
-            if (quotes.length === 0) {
-                listEl.innerHTML = `
-                    <div class="text-center py-10 bg-white rounded-2xl border border-slate-100 p-6 space-y-2">
-                        <i class="fa-solid fa-file-invoice text-slate-300 text-3xl"></i>
-                        <p class="text-xs text-slate-500 font-medium">Nenhum orçamento salvo ainda.</p>
-                        <button onclick="openQuoteModal()" class="text-xs font-bold text-blue-600 hover:underline">Criar primeiro orçamento</button>
-                    </div>
-                `;
-                return;
-            }
+// ===================== RENDER ALL =====================
+function renderAll() {
+  renderStats();
+  renderFilterCounts();
+  renderOrcamentosList();
+  renderClientesList();
+  renderHojeList();
+  updateHeaderCount();
+}
 
-            listEl.innerHTML = quotes.map((q, idx) => `
-                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2 hover:border-blue-300 transition">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">${q.id}</span>
-                            <h4 class="font-bold text-sm text-slate-800 mt-1">${q.clientName}</h4>
-                            <p class="text-[11px] text-slate-500">${q.serviceDesc}</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xs font-extrabold text-blue-600 block">R$ ${q.total.toFixed(2)}</span>
-                            <span class="text-[10px] text-slate-400">${q.date}</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                        <button onclick="viewSavedQuote(${idx})" class="text-blue-600 font-bold hover:underline flex items-center gap-1">
-                            <i class="fa-solid fa-eye"></i> Ver Orçamento
-                        </button>
-                        <div class="flex items-center space-x-2">
-                            <button onclick="shareSavedWhatsApp(${idx})" class="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg font-bold hover:bg-emerald-100 transition flex items-center gap-1">
-                                <i class="fa-brands fa-whatsapp"></i> WhatsApp
-                            </button>
-                            <button onclick="deleteQuote(${idx})" class="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
+function updateHeaderCount() {
+  document.getElementById('orcamentos-count-label').textContent =
+    orcamentos.length + ' ' + (orcamentos.length === 1 ? 'orçamento' : 'orçamentos');
+}
 
-        function filterHistory() {
-            const query = document.getElementById('search-history').value.toLowerCase();
-            const filtered = quotes.filter(q => q.clientName.toLowerCase().includes(query) || q.serviceDesc.toLowerCase().includes(query) || q.id.toLowerCase().includes(query));
-            
-            const listEl = document.getElementById('history-list');
-            if (filtered.length === 0) {
-                listEl.innerHTML = `<div class="text-center py-6 text-xs text-slate-400">Nenhum orçamento encontrado para "${query}"</div>`;
-                return;
-            }
+function renderStats() {
+  const now = new Date();
+  const mes = now.getMonth(), ano = now.getFullYear();
+  let orcado = 0, aprovado = 0, semResposta = 0;
+  orcamentos.forEach(o => {
+    const d = new Date(o.criadoEm);
+    if (d.getMonth() === mes && d.getFullYear() === ano) {
+      orcado += (o.total || 0);
+      if (o.status === 'aprovado') aprovado += (o.total || 0);
+    }
+    if (o.status === 'enviado') semResposta++;
+  });
+  document.getElementById('stat-orcado').textContent = formatBRL(orcado);
+  document.getElementById('stat-aprovado').textContent = formatBRL(aprovado);
+  document.getElementById('stat-sem-resposta').textContent = semResposta;
+  const card = document.getElementById('stat-sem-resposta-card');
+  card.classList.toggle('bg-rose-50', semResposta > 0);
+  card.classList.toggle('border-rose-200', semResposta > 0);
+}
 
-            listEl.innerHTML = filtered.map((q, idx) => `
-                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">${q.id}</span>
-                            <h4 class="font-bold text-sm text-slate-800 mt-1">${q.clientName}</h4>
-                            <p class="text-[11px] text-slate-500">${q.serviceDesc}</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xs font-extrabold text-blue-600 block">R$ ${q.total.toFixed(2)}</span>
-                            <span class="text-[10px] text-slate-400">${q.date}</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                        <button onclick="viewSavedQuoteByIndex(${idx})" class="text-blue-600 font-bold hover:underline flex items-center gap-1">
-                            <i class="fa-solid fa-eye"></i> Ver Orçamento
-                        </button>
-                        <div class="flex items-center space-x-2">
-                            <button onclick="shareSavedWhatsAppByIndex(${idx})" class="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg font-bold hover:bg-emerald-100 transition flex items-center gap-1">
-                                <i class="fa-brands fa-whatsapp"></i> WhatsApp
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
+function renderFilterCounts() {
+  const counts = { todos: orcamentos.length, aprovado: 0, enviado: 0, pendente: 0 };
+  orcamentos.forEach(o => { if (counts[o.status] !== undefined) counts[o.status]++; });
+  document.getElementById('filter-todos-count').textContent = counts.todos;
+  document.getElementById('filter-aprovado-count').textContent = counts.aprovado;
+  document.getElementById('filter-enviado-count').textContent = counts.enviado;
+  document.getElementById('filter-pendente-count').textContent = counts.pendente;
+}
 
-        function viewSavedQuote(idx) {
-            showQuoteResult(quotes[idx]);
-        }
+function renderOrcamentosList() {
+  const container = document.getElementById('orcamentos-list');
+  const list = currentFilter === 'todos' ? orcamentos : orcamentos.filter(o => o.status === currentFilter);
+  container.innerHTML = list.length === 0 ? emptyState('Nenhum orçamento aqui') : list.map(orcamentoCardHTML).join('');
+}
 
-        function viewSavedQuoteByIndex(idx) {
-            showQuoteResult(quotes[idx]);
-        }
+function renderHojeList() {
+  const container = document.getElementById('subtab-hoje');
+  const today = new Date().toDateString();
+  const list = orcamentos.filter(o => new Date(o.criadoEm).toDateString() === today);
+  container.innerHTML = list.length === 0
+    ? emptyState('Nenhum orçamento hoje')
+    : list.map(orcamentoCardHTML).join('');
+}
 
-        function deleteQuote(idx) {
-            quotes.splice(idx, 1);
-            localStorage.setItem('ar_orcamentos', JSON.stringify(quotes));
-            renderHistory();
-            updateStats();
-            showToast("Orçamento excluído.");
-        }
+function renderClientesList() {
+  const container = document.getElementById('clientes-list');
+  const clienteMap = {};
+  orcamentos.forEach(o => {
+    const key = (o.clienteNome || 'Sem nome').toLowerCase();
+    if (!clienteMap[key]) clienteMap[key] = { nome: o.clienteNome || 'Sem nome', telefone: o.clienteTelefone || '', orcamentos: [] };
+    clienteMap[key].orcamentos.push(o);
+  });
+  const clientes = Object.values(clienteMap);
+  if (clientes.length === 0) { container.innerHTML = emptyState('Nenhum cliente ainda'); return; }
+  container.innerHTML = clientes.map(c => `
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-2 fade-up">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center font-bold text-brand-600 text-sm">
+            ${getInitials(c.nome)}
+          </div>
+          <div>
+            <p class="font-bold text-slate-800 text-sm">${esc(c.nome)}</p>
+            <p class="text-xs text-slate-500">${c.telefone ? esc(c.telefone) : ''}</p>
+          </div>
+        </div>
+        <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
+          ${c.orcamentos.length} orç.
+        </span>
+      </div>
+      <div class="flex gap-2">
+        ${c.telefone ? `<a href="https://wa.me/55${digits(c.telefone)}" target="_blank"
+          class="flex-1 py-2 rounded-xl bg-emerald-50 text-emerald-600 font-bold text-xs text-center border border-emerald-200">
+          <i class="fa-brands fa-whatsapp mr-1"></i>WhatsApp
+        </a>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
 
-        function clearHistory() {
-            quotes = [];
-            localStorage.removeItem('ar_orcamentos');
-            renderHistory();
-            updateStats();
-            showToast("Histórico limpo.");
-        }
+function orcamentoCardHTML(o) {
+  const badges = { pendente: 'status-badge-pendente', enviado: 'status-badge-enviado', aprovado: 'status-badge-aprovado' };
+  const labels = { pendente: 'Pendente', enviado: 'Enviado', aprovado: 'Aprovado' };
+  return `
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-2 fade-up" data-id="${o.id}">
+      <div class="flex items-start justify-between gap-2">
+        <span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${badges[o.status] || 'status-badge-pendente'}">${labels[o.status] || 'Pendente'}</span>
+        <span class="text-[11px] text-slate-400">${formatDate(o.criadoEm)}</span>
+      </div>
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-slate-800 text-sm truncate">${esc(o.clienteNome || 'Cliente')}</p>
+          <p class="text-xs text-slate-500 truncate">${esc(o.aparelho || o.descricao || '—')}</p>
+        </div>
+        <span class="text-base font-extrabold text-brand-600 shrink-0">${formatBRL(o.total || 0)}</span>
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button onclick="viewOrcamento('${o.id}')" class="flex-1 py-2 rounded-xl bg-brand-50 border border-brand-100 text-brand-600 font-bold text-xs hover:bg-brand-100 transition">
+          <i class="fa-solid fa-eye mr-1"></i>Ver
+        </button>
+        <button onclick="sendWhatsAppFor('${o.id}')" class="flex-1 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 font-bold text-xs hover:bg-emerald-100 transition">
+          <i class="fa-brands fa-whatsapp mr-1"></i>WhatsApp
+        </button>
+        <button onclick="deleteOrcamento('${o.id}')" class="w-9 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-500 font-bold text-xs hover:bg-rose-100 transition flex items-center justify-center">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+    </div>`;
+}
 
-        // PDF Generation with jsPDF
-        function downloadPDFFromModal() {
-            if (!currentActiveQuote) return;
-            generatePDF(currentActiveQuote);
-        }
+function emptyState(msg) {
+  return `<div class="text-center py-12 text-slate-400">
+    <i class="fa-solid fa-file-circle-xmark text-4xl mb-3 block"></i>
+    <p class="text-sm font-medium">${msg}</p>
+  </div>`;
+}
 
-        function generatePDF(quote) {
-            if (!window.jspdf?.jsPDF) { showToast('Biblioteca de PDF indisponível. Verifique sua conexão e tente novamente.'); return; }
-            const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const pageHeight = doc.internal.pageSize.getHeight();
-            const margin = 16;
-            const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            const text = value => String(value || '—');
-            const addHeader = () => {
-                doc.setFillColor(15, 23, 42); doc.rect(0, 0, pageWidth, 38, 'F');
-                doc.setFillColor(37, 99, 235); doc.roundedRect(margin, 9, 12, 12, 3, 3, 'F');
-                doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
-                doc.text('AR NO PREÇO CERTO', margin + 17, 16);
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-                doc.text(`ORÇAMENTO  ${text(quote.id)}   •   ${text(quote.date)}`, margin + 17, 24);
-                doc.setTextColor(30, 41, 59);
-            };
-            addHeader();
-            let y = 50;
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(37, 99, 235);
-            doc.text('DADOS DO CLIENTE', margin, y); y += 7;
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(51, 65, 85);
-            const info = [ ['Cliente', quote.clientName], ['Telefone', quote.clientPhone], ['Endereço da instalação', quote.clientAddress], ['Serviço / aparelho', quote.serviceDesc] ];
-            info.forEach(([label, value]) => {
-                const lines = doc.splitTextToSize(`${label}: ${text(value)}`, pageWidth - margin * 2);
-                if (y + lines.length * 5 > pageHeight - 24) { doc.addPage(); addHeader(); y = 50; }
-                doc.text(lines, margin, y); y += lines.length * 5 + 1;
-            });
-            y += 5;
-            const drawTableHeader = () => {
-                doc.setFillColor(241, 245, 249); doc.roundedRect(margin, y, pageWidth - margin * 2, 10, 2, 2, 'F');
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(51, 65, 85);
-                doc.text('DESCRIÇÃO', margin + 4, y + 6.5); doc.text('VALOR', pageWidth - margin - 4, y + 6.5, { align: 'right' });
-                y += 14;
-            };
-            drawTableHeader();
-            (quote.items || []).forEach(item => {
-                const lines = doc.splitTextToSize(text(item.desc), pageWidth - margin * 2 - 52);
-                const rowHeight = Math.max(9, lines.length * 5 + 4);
-                if (y + rowHeight > pageHeight - 32) { doc.addPage(); addHeader(); y = 50; drawTableHeader(); }
-                doc.setDrawColor(226, 232, 240); doc.line(margin, y + rowHeight, pageWidth - margin, y + rowHeight);
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(51, 65, 85);
-                doc.text(lines, margin + 4, y + 5); doc.text(money(item.price), pageWidth - margin - 4, y + 5, { align: 'right' });
-                y += rowHeight;
-            });
-            if (y + 20 > pageHeight - 22) { doc.addPage(); addHeader(); y = 50; }
-            y += 7; doc.setFillColor(239, 246, 255); doc.roundedRect(margin, y, pageWidth - margin * 2, 16, 3, 3, 'F');
-            doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 64, 175); doc.setFontSize(11);
-            doc.text('TOTAL DO ORÇAMENTO', margin + 5, y + 10); doc.text(money(quote.total), pageWidth - margin - 5, y + 10, { align: 'right' });
-            const pages = doc.getNumberOfPages();
-            for (let page = 1; page <= pages; page++) {
-                doc.setPage(page); doc.setDrawColor(226, 232, 240); doc.line(margin, pageHeight - 16, pageWidth - margin, pageHeight - 16);
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 116, 139);
-                doc.text('Ar no Preço Certo • Orçamento de serviços de climatização', margin, pageHeight - 10);
-                doc.text(`${page} / ${pages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-            }
-            const safeName = text(quote.clientName).normalize('NFD').replace(/\p{M}/gu, '').replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 40);
-            doc.save(`Orcamento_${safeName}_${text(quote.id)}.pdf`);
-            showToast('PDF profissional baixado com sucesso!');
-        }
+// ===================== SUB-TABS =====================
+function switchSubTab(tab) {
+  currentSubTab = tab;
+  ['hoje','orcamentos','clientes'].forEach(t => {
+    const btn = document.getElementById('subtab-' + t + '-btn');
+    const content = document.getElementById('subtab-' + t);
+    const active = t === tab;
+    if (btn) {
+      btn.classList.toggle('bg-white', active);
+      btn.classList.toggle('shadow-sm', active);
+      btn.classList.toggle('font-bold', active);
+      btn.classList.toggle('text-slate-800', active);
+      btn.classList.toggle('text-slate-600', !active);
+    }
+    if (content) content.classList.toggle('hidden', !active);
+  });
+  if (tab === 'hoje') renderHojeList();
+  if (tab === 'clientes') renderClientesList();
+}
 
-        // WhatsApp Sharing
-        function sendWhatsAppFromModal() {
-            if (!currentActiveQuote) return;
-            shareWhatsApp(currentActiveQuote);
-        }
+// ===================== FILTER =====================
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-pill').forEach(btn => {
+    const id = btn.id.replace('filter-','');
+    const active = id === f;
+    btn.classList.toggle('bg-brand-600', active);
+    btn.classList.toggle('text-white', active);
+    btn.classList.toggle('border-brand-600', active);
+    btn.classList.toggle('bg-white', !active);
+    btn.classList.toggle('text-slate-600', !active);
+    btn.classList.toggle('border-slate-200', !active);
+  });
+  renderOrcamentosList();
+}
 
-        function shareSavedWhatsApp(idx) {
-            shareWhatsApp(quotes[idx]);
-        }
+// ===================== PERFIL =====================
+function loadPerfilForm() {
+  if (perfil.nome) document.getElementById('perfil-nome').value = perfil.nome;
+  if (perfil.empresa) document.getElementById('perfil-empresa').value = perfil.empresa;
+  if (perfil.whatsapp) document.getElementById('perfil-whatsapp').value = perfil.whatsapp;
+  if (perfil.cidade) document.getElementById('perfil-cidade').value = perfil.cidade;
+}
 
-        function shareSavedWhatsAppByIndex(idx) {
-            shareWhatsApp(quotes[idx]);
-        }
+function savePerfil() {
+  perfil.nome = document.getElementById('perfil-nome').value.trim();
+  perfil.empresa = document.getElementById('perfil-empresa').value.trim();
+  perfil.whatsapp = document.getElementById('perfil-whatsapp').value.trim();
+  perfil.cidade = document.getElementById('perfil-cidade').value.trim();
+  saveData();
+  updateAvatar();
+  showToast('Dados salvos!');
+  setTimeout(() => openView('orcamentos'), 800);
+}
 
-        function shareWhatsApp(quote) {
-            let itemsText = quote.items.map(i => `• ${i.desc}: *R$ ${i.price.toFixed(2)}*`).join('\n');
-            const message = `*AR NO PREÇO CERTO - ORÇAMENTO*\n\n` +
-                            `📄 *${quote.id}*\n` +
-                            `👤 *Cliente:* ${quote.clientName}\n` +
-                            `🛠️ *Serviço:* ${quote.serviceDesc}\n\n` +
-                            `*Detalhamento:*\n${itemsText}\n\n` +
-                            `💰 *VALOR TOTAL: R$ ${quote.total.toFixed(2)}*\n\n` +
-                            `📅 Data: ${quote.date}\n` +
-                            `Agradecemos a preferência!`;
+function handleLogoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { showToast('Imagem muito grande (máx 2MB)'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    perfil.logo = ev.target.result;
+    saveData();
+    renderLogoPreview();
+    updateAvatar();
+    showToast('Logo atualizada!');
+  };
+  reader.readAsDataURL(file);
+}
 
-            const encoded = encodeURIComponent(message);
-            window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
-        }
+function removeLogo() {
+  perfil.logo = null;
+  saveData();
+  renderLogoPreview();
+  updateAvatar();
+}
 
-        // Scripts WhatsApp Copy
-        function copyScript(id) {
-            const text = document.getElementById(`script-${id}`).textContent;
-            navigator.clipboard.writeText(text.trim()).then(() => {
-                showToast("Script copiado para a área de transferência!");
-            }).catch(() => {
-                // Fallback copy
-                const textArea = document.createElement("textarea");
-                textArea.value = text.trim();
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand("copy");
-                document.body.removeChild(textArea);
-                showToast("Script copiado com sucesso!");
-            });
-        }
+function renderLogoPreview() {
+  const initElem = document.getElementById('logo-preview-initials');
+  const imgElem = document.getElementById('logo-preview-img');
+  const initials = getInitials(perfil.nome || '');
+  initElem.textContent = initials;
+  if (perfil.logo) {
+    imgElem.src = perfil.logo;
+    imgElem.classList.remove('hidden');
+    initElem.classList.add('hidden');
+  } else {
+    imgElem.classList.add('hidden');
+    initElem.classList.remove('hidden');
+  }
+}
 
-        // Install Guide Modal
-        function openInstallGuide() {
-            document.getElementById('install-modal').classList.remove('hidden');
-        }
+// ===================== PAGAMENTO =====================
+function loadPagamentoForm() {
+  if (pagamento.pixChave) document.getElementById('pag-pix-chave').value = pagamento.pixChave;
+  if (pagamento.acrescimo !== undefined) document.getElementById('pag-acrescimo').value = pagamento.acrescimo;
+  if (pagamento.garantia) document.getElementById('pag-garantia').value = pagamento.garantia;
+  if (pagamento.validade) document.getElementById('pag-validade').value = pagamento.validade;
+  parcelasCount = pagamento.parcelas || 12;
+  document.getElementById('pag-parcelas-display').textContent = parcelasCount + 'x';
+  pixTipoSel = pagamento.pixTipo || 'cpf';
+  updatePixTipoUI();
+}
 
-        function closeInstallGuide() {
-            document.getElementById('install-modal').classList.add('hidden');
-        }
+function setPixTipo(tipo) {
+  pixTipoSel = tipo;
+  updatePixTipoUI();
+}
 
-        // Toast Helper
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-            toast.classList.remove('opacity-0', 'pointer-events-none');
-            toast.classList.add('opacity-100');
-            setTimeout(() => {
-                toast.classList.remove('opacity-100');
-                toast.classList.add('opacity-0', 'pointer-events-none');
-            }, 3000);
-        }
-    </script>
+function updatePixTipoUI() {
+  document.querySelectorAll('.pix-tipo-btn').forEach(btn => {
+    const t = btn.id.replace('pix-tipo-','');
+    const active = t === pixTipoSel;
+    btn.classList.toggle('bg-white', active);
+    btn.classList.toggle('border-brand-500', active);
+    btn.classList.toggle('text-brand-600', active);
+    btn.classList.toggle('font-bold', active);
+    btn.classList.toggle('bg-slate-50', !active);
+    btn.classList.toggle('border-slate-200', !active);
+    btn.classList.toggle('text-slate-600', !active);
+  });
+}
+
+function adjustParcelas(delta) {
+  parcelasCount = Math.max(1, Math.min(48, parcelasCount + delta));
+  document.getElementById('pag-parcelas-display').textContent = parcelasCount + 'x';
+}
+
+function savePagamento() {
+  pagamento.pixTipo = pixTipoSel;
+  pagamento.pixChave = document.getElementById('pag-pix-chave').value.trim();
+  pagamento.parcelas = parcelasCount;
+  pagamento.acrescimo = parseFloat(document.getElementById('pag-acrescimo').value) || 0;
+  pagamento.garantia = document.getElementById('pag-garantia').value.trim();
+  pagamento.validade = parseInt(document.getElementById('pag-validade').value) || 7;
+  saveData();
+  showToast('Configurações salvas!');
+  setTimeout(() => openView('meus-dados'), 800);
+}
+
+// ===================== QUOTE MODAL =====================
+let itemRows = [];
+
+function openQuoteModal(preloaded) {
+  itemRows = preloaded ? (preloaded.itens || []).map((it,i)=>({id:i, desc: it.desc, val: it.val})) : [];
+  if (!preloaded) {
+    ['f-nome','f-telefone','f-endereco','f-aparelho'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  } else {
+    document.getElementById('f-nome').value = preloaded.clienteNome || '';
+    document.getElementById('f-telefone').value = preloaded.clienteTelefone || '';
+    document.getElementById('f-endereco').value = preloaded.clienteEndereco || '';
+    document.getElementById('f-aparelho').value = preloaded.aparelho || '';
+  }
+  renderItemRows();
+  document.getElementById('quote-modal').classList.remove('hidden');
+  currentOrcamento = preloaded || null;
+}
+
+function closeQuoteModal() {
+  stopVoice();
+  document.getElementById('quote-modal').classList.add('hidden');
+}
+
+function closeQuoteModalOutside(e) {
+  if (e.target === document.getElementById('quote-modal')) closeQuoteModal();
+}
+
+function addItemRow(desc, val) {
+  const id = Date.now() + Math.random();
+  itemRows.push({ id, desc: desc || '', val: val || '' });
+  renderItemRows();
+}
+
+function removeItemRow(id) {
+  itemRows = itemRows.filter(r => r.id != id);
+  renderItemRows();
+}
+
+function renderItemRows() {
+  const container = document.getElementById('items-container');
+  if (itemRows.length === 0) {
+    addItemRow();
+    return;
+  }
+  container.innerHTML = itemRows.map(r => `
+    <div class="item-row" id="row-${r.id}">
+      <input type="text" placeholder="Descrição do item" value="${esc(r.desc)}"
+        oninput="updateItemDesc(${r.id}, this.value)"
+        class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
+      <input type="number" placeholder="0,00" value="${r.val}"
+        oninput="updateItemVal(${r.id}, this.value)"
+        class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500 w-24 text-right">
+      <button onclick="removeItemRow(${r.id})" class="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 text-rose-400 flex items-center justify-center hover:bg-rose-100 transition shrink-0">
+        <i class="fa-solid fa-xmark text-xs"></i>
+      </button>
+    </div>`).join('');
+  recalcTotal();
+}
+
+function updateItemDesc(id, v) {
+  const row = itemRows.find(r => r.id == id);
+  if (row) row.desc = v;
+}
+
+function updateItemVal(id, v) {
+  const row = itemRows.find(r => r.id == id);
+  if (row) { row.val = v; recalcTotal(); }
+}
+
+function recalcTotal() {
+  const total = itemRows.reduce((s, r) => s + (parseFloat(r.val) || 0), 0);
+  document.getElementById('total-display').textContent = formatBRL(total);
+  return total;
+}
+
+function getFormData() {
+  // sync current input values to itemRows
+  itemRows.forEach(r => {
+    const descEl = document.querySelector(`#row-${r.id} input[type="text"]`);
+    const valEl = document.querySelector(`#row-${r.id} input[type="number"]`);
+    if (descEl) r.desc = descEl.value;
+    if (valEl) r.val = valEl.value;
+  });
+  const total = itemRows.reduce((s, r) => s + (parseFloat(r.val) || 0), 0);
+  return {
+    id: currentOrcamento ? currentOrcamento.id : genId(),
+    criadoEm: currentOrcamento ? currentOrcamento.criadoEm : new Date().toISOString(),
+    status: currentOrcamento ? currentOrcamento.status : 'pendente',
+    clienteNome: document.getElementById('f-nome').value.trim(),
+    clienteTelefone: document.getElementById('f-telefone').value.trim(),
+    clienteEndereco: document.getElementById('f-endereco').value.trim(),
+    aparelho: document.getElementById('f-aparelho').value.trim(),
+    itens: itemRows.filter(r => r.desc || r.val).map(r => ({ desc: r.desc, val: parseFloat(r.val) || 0 })),
+    total
+  };
+}
+
+function saveAndGeneratePDF() {
+  const data = getFormData();
+  if (!data.clienteNome) { showToast('Informe o nome do cliente'); return; }
+  if (data.itens.length === 0 || data.total === 0) { showToast('Adicione ao menos um item com valor'); return; }
+
+  // Update or add
+  const idx = orcamentos.findIndex(o => o.id === data.id);
+  if (idx >= 0) orcamentos[idx] = data;
+  else orcamentos.unshift(data);
+
+  currentOrcamento = data;
+  saveData();
+  renderAll();
+  closeQuoteModal();
+  openResultModal(data);
+}
+
+// ===================== RESULT MODAL =====================
+function openResultModal(o) {
+  currentOrcamento = o;
+  document.getElementById('result-num').textContent = 'Orçamento #' + String(orcamentos.indexOf(o) + 1 || 1).padStart(3, '0');
+
+  // Técnico
+  const nome = perfil.nome || 'Técnico';
+  document.getElementById('result-tecnico-nome').textContent = perfil.empresa ? perfil.empresa + ' — ' + nome : nome;
+  const info = [perfil.whatsapp, perfil.cidade].filter(Boolean).join(' · ');
+  document.getElementById('result-tecnico-info').textContent = info || '—';
+
+  // Logo
+  const initials = getInitials(perfil.nome || '');
+  document.getElementById('result-logo-initials').textContent = initials;
+  const logoImg = document.getElementById('result-logo-img');
+  if (perfil.logo) {
+    logoImg.src = perfil.logo;
+    logoImg.classList.remove('hidden');
+    document.getElementById('result-logo-initials').classList.add('hidden');
+  } else {
+    logoImg.classList.add('hidden');
+    document.getElementById('result-logo-initials').classList.remove('hidden');
+  }
+
+  // Cliente
+  document.getElementById('result-cliente-nome').textContent = o.clienteNome || '—';
+  const clienteInfo = [o.clienteTelefone, o.clienteEndereco].filter(Boolean).join(' · ');
+  document.getElementById('result-cliente-info').textContent = clienteInfo || o.aparelho || '—';
+
+  // Itens
+  const itemsEl = document.getElementById('result-items');
+  itemsEl.innerHTML = (o.itens || []).map(it => `
+    <div class="flex justify-between text-sm py-1 border-b border-slate-50">
+      <span class="text-slate-700">${esc(it.desc)}</span>
+      <span class="font-semibold text-slate-800">${formatBRL(it.val)}</span>
+    </div>`).join('');
+  document.getElementById('result-total').textContent = formatBRL(o.total || 0);
+
+  // Pagamento
+  const pix = pagamento.pixChave;
+  const pixB = document.getElementById('result-pix-block');
+  if (pix) {
+    pixB.classList.remove('hidden');
+    document.getElementById('result-pix-info').textContent = 'Chave Pix: ' + pix + ' — Link para copiar no PDF';
+  } else { pixB.classList.add('hidden'); }
+
+  const cartaoB = document.getElementById('result-cartao-block');
+  if (pagamento.parcelas) {
+    cartaoB.classList.remove('hidden');
+    const ac = pagamento.acrescimo ? ' (+' + pagamento.acrescimo + '%)' : ' sem juros';
+    document.getElementById('result-cartao-info').textContent = 'Parcelado em até ' + pagamento.parcelas + 'x' + ac;
+  } else { cartaoB.classList.add('hidden'); }
+
+  const garB = document.getElementById('result-garantia-block');
+  if (pagamento.garantia) {
+    garB.classList.remove('hidden');
+    document.getElementById('result-garantia-info').textContent = pagamento.garantia;
+  } else { garB.classList.add('hidden'); }
+
+  const valB = document.getElementById('result-validade-block');
+  if (pagamento.validade) {
+    valB.classList.remove('hidden');
+    document.getElementById('result-validade-info').textContent = 'Orçamento válido por ' + pagamento.validade + ' dias';
+  } else { valB.classList.add('hidden'); }
+
+  // Btn aprovar
+  const btn = document.getElementById('btn-aprovar');
+  if (o.status === 'aprovado') {
+    btn.textContent = '✓ Aprovado';
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+  } else {
+    btn.disabled = false;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    btn.innerHTML = '<i class="fa-solid fa-thumbs-up mr-1"></i> Aprovado';
+  }
+
+  document.getElementById('result-modal').classList.remove('hidden');
+}
+
+function closeResultModal() {
+  document.getElementById('result-modal').classList.add('hidden');
+}
+
+function closeResultModalOutside(e) {
+  if (e.target === document.getElementById('result-modal')) closeResultModal();
+}
+
+function viewOrcamento(id) {
+  const o = orcamentos.find(x => x.id === id);
+  if (!o) return;
+  currentOrcamento = o;
+  openResultModal(o);
+}
+
+function marcarAprovado() {
+  if (!currentOrcamento) return;
+  const idx = orcamentos.findIndex(o => o.id === currentOrcamento.id);
+  if (idx >= 0) {
+    orcamentos[idx].status = 'aprovado';
+    currentOrcamento = orcamentos[idx];
+  }
+  saveData();
+  renderAll();
+  openResultModal(currentOrcamento);
+  showToast('Marcado como aprovado!');
+}
+
+function excluirAtual() {
+  if (!currentOrcamento) return;
+  if (!confirm('Excluir este orçamento?')) return;
+  deleteOrcamento(currentOrcamento.id);
+  closeResultModal();
+}
+
+function deleteOrcamento(id) {
+  orcamentos = orcamentos.filter(o => o.id !== id);
+  saveData();
+  renderAll();
+  showToast('Orçamento excluído');
+}
+
+// ===================== WHATSAPP =====================
+function sendWhatsApp() {
+  if (!currentOrcamento) return;
+  const idx = orcamentos.findIndex(o => o.id === currentOrcamento.id);
+  if (idx >= 0) orcamentos[idx].status = 'enviado';
+  saveData();
+  renderAll();
+  openResultModal(orcamentos[idx]);
+
+  const o = currentOrcamento;
+  const nome = o.clienteNome || 'Cliente';
+  const telefone = digits(o.clienteTelefone || '');
+  let msg = `Olá ${nome}! 😊\n\nSegue o orçamento de ar-condicionado:\n\n`;
+  msg += `🔧 *Aparelho/Serviço:* ${o.aparelho || '—'}\n\n`;
+  msg += `📋 *Itens:*\n`;
+  (o.itens || []).forEach(it => { msg += `  • ${it.desc}: ${formatBRL(it.val)}\n`; });
+  msg += `\n💰 *Total: ${formatBRL(o.total)}*\n`;
+  if (pagamento.pixChave) msg += `\n💳 Pix: ${pagamento.pixChave}`;
+  if (pagamento.parcelas) msg += `\n💳 Cartão: até ${pagamento.parcelas}x`;
+  if (pagamento.garantia) msg += `\n🛡️ ${pagamento.garantia}`;
+  if (pagamento.validade) msg += `\n📅 Válido por ${pagamento.validade} dias`;
+  msg += `\n\nQualquer dúvida, estou à disposição! 👍`;
+
+  const url = 'https://wa.me/' + (telefone ? '55' + telefone : '') + '?text=' + encodeURIComponent(msg);
+  window.open(url, '_blank');
+  showToast('Status atualizado para Enviado!');
+}
+
+function sendWhatsAppFor(id) {
+  const o = orcamentos.find(x => x.id === id);
+  if (!o) return;
+  currentOrcamento = o;
+  sendWhatsApp();
+}
+
+// ===================== PDF =====================
+function downloadPDF() {
+  if (!currentOrcamento) return;
+  generatePDF(currentOrcamento);
+}
+
+function generatePDF(o) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210, margin = 15;
+  let y = margin;
+
+  // Header background
+  doc.setFillColor(37, 99, 235);
+  doc.roundedRect(margin, y, W - margin * 2, 28, 4, 4, 'F');
+
+  // Logo / initials in header
+  const initials = getInitials(perfil.nome || 'AR');
+  if (perfil.logo) {
+    try { doc.addImage(perfil.logo, 'PNG', margin + 3, y + 3, 22, 22); } catch(e) {}
+  } else {
+    doc.setFillColor(255, 255, 255, 0.2);
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(initials, margin + 14, y + 17, { align: 'center' });
+  }
+
+  // Técnico info in header
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  const nomeTec = perfil.empresa || perfil.nome || 'Técnico';
+  doc.text(nomeTec, margin + 29, y + 10);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  const sub = [perfil.nome && perfil.empresa ? perfil.nome : null, perfil.whatsapp, perfil.cidade].filter(Boolean).join(' · ');
+  if (sub) doc.text(sub, margin + 29, y + 16);
+  // Orçamento #
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  const num = '#' + String(orcamentos.indexOf(o) + 1).padStart(4, '0');
+  doc.text('Orçamento ' + num, W - margin - 2, y + 10, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text(formatDate(o.criadoEm), W - margin - 2, y + 16, { align: 'right' });
+
+  y += 36;
+
+  // Client section
+  doc.setTextColor(31, 41, 55);
+  doc.setFillColor(238, 242, 255);
+  doc.roundedRect(margin, y, W - margin * 2, 22, 3, 3, 'F');
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(100, 116, 139);
+  doc.text('CLIENTE', margin + 4, y + 6);
+  doc.setTextColor(31, 41, 55);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text(o.clienteNome || '—', margin + 4, y + 13);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  const clienteInfo = [o.clienteTelefone, o.clienteEndereco].filter(Boolean).join(' · ');
+  if (clienteInfo) doc.text(clienteInfo, margin + 4, y + 19);
+  y += 28;
+
+  // Aparelho
+  if (o.aparelho) {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(37, 99, 235);
+    doc.text('Aparelho/Serviço: ', margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(31, 41, 55);
+    doc.text(o.aparelho, margin + 40, y);
+    y += 7;
+  }
+
+  // Items table
+  doc.setFillColor(241, 245, 249);
+  doc.rect(margin, y, W - margin * 2, 7, 'F');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(100, 116, 139);
+  doc.text('DESCRIÇÃO', margin + 3, y + 5);
+  doc.text('VALOR', W - margin - 3, y + 5, { align: 'right' });
+  y += 9;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(31, 41, 55);
+  doc.setFontSize(9);
+  (o.itens || []).forEach((it, i) => {
+    if (i % 2 === 0) { doc.setFillColor(249, 250, 251); doc.rect(margin, y - 1, W - margin * 2, 7, 'F'); }
+    doc.text(it.desc || '—', margin + 3, y + 4);
+    doc.text(formatBRL(it.val), W - margin - 3, y + 4, { align: 'right' });
+    y += 7;
+  });
+
+  // Total
+  y += 2;
+  doc.setFillColor(37, 99, 235);
+  doc.roundedRect(margin, y, W - margin * 2, 10, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('TOTAL', margin + 4, y + 7);
+  doc.text(formatBRL(o.total || 0), W - margin - 4, y + 7, { align: 'right' });
+  y += 16;
+
+  // Pagamento
+  const hasPag = pagamento.pixChave || pagamento.parcelas || pagamento.garantia || pagamento.validade;
+  if (hasPag) {
+    doc.setFillColor(238, 242, 255);
+    const pagLines = [];
+    if (pagamento.pixChave) {
+      pagLines.push({ icon: '⬛', text: 'Pix: ' + pagamento.pixChave });
+      const pixLink = 'https://nubank.com.br/cobrar/' + encodeURIComponent(pagamento.pixChave) + '/link';
+      pagLines.push({ icon: '', text: 'Link: ' + pixLink });
+    }
+    if (pagamento.parcelas) {
+      const ac = pagamento.acrescimo ? ' (+' + pagamento.acrescimo + '%)' : ' sem juros';
+      pagLines.push({ icon: '💳', text: 'Cartão: até ' + pagamento.parcelas + 'x' + ac });
+    }
+    if (pagamento.garantia) pagLines.push({ icon: '🛡️', text: pagamento.garantia });
+    if (pagamento.validade) pagLines.push({ icon: '📅', text: 'Válido por ' + pagamento.validade + ' dias' });
+    const pagH = pagLines.length * 6 + 10;
+    doc.roundedRect(margin, y, W - margin * 2, pagH, 3, 3, 'F');
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 116, 139);
+    doc.text('CONDIÇÕES DE PAGAMENTO', margin + 4, y + 5);
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(31, 41, 55);
+    pagLines.forEach(l => {
+      doc.text(l.text, margin + 4, y);
+      y += 6;
+    });
+    y += 4;
+  }
+
+  // Footer
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Gerado por Ar no Preço Certo — arnoprecerto.app', W / 2, 290, { align: 'center' });
+
+  doc.save('orcamento-' + (o.clienteNome || 'cliente').replace(/\s+/g, '_') + '.pdf');
+  showToast('PDF gerado!');
+}
+
+// ===================== VOICE RECOGNITION =====================
+function toggleVoice() {
+  if (isListening) stopVoice();
+  else startVoice();
+}
+
+function startVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    showToast('Reconhecimento de voz não suportado neste navegador');
+    return;
+  }
+  voiceRecognition = new SpeechRecognition();
+  voiceRecognition.lang = 'pt-BR';
+  voiceRecognition.continuous = true;
+  voiceRecognition.interimResults = false;
+  lastTranscript = '';
+  voiceRecognition.onstart = () => {
+    isListening = true;
+    updateVoiceUI(true);
+  };
+  voiceRecognition.onresult = e => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) lastTranscript += ' ' + e.results[i][0].transcript;
+    }
+  };
+  voiceRecognition.onerror = e => {
+    if (e.error !== 'no-speech') showToast('Erro no microfone: ' + e.error);
+    stopVoice();
+  };
+  voiceRecognition.onend = () => { if (isListening) voiceRecognition.start(); };
+  voiceRecognition.start();
+}
+
+function stopVoice() {
+  isListening = false;
+  if (voiceRecognition) { voiceRecognition.onend = null; voiceRecognition.stop(); voiceRecognition = null; }
+  updateVoiceUI(false);
+}
+
+function finishVoice() {
+  stopVoice();
+  if (lastTranscript.trim()) parseTranscript(lastTranscript.trim());
+  else showToast('Nenhum áudio detectado');
+}
+
+function updateVoiceUI(listening) {
+  const btn = document.getElementById('modal-mic-btn');
+  const icon = document.getElementById('modal-mic-icon');
+  const status = document.getElementById('modal-voice-status');
+  const finishBtn = document.getElementById('finish-voice-btn');
+  if (listening) {
+    btn.classList.add('mic-pulsing', 'bg-rose-600');
+    btn.classList.remove('bg-brand-600');
+    icon.className = 'fa-solid fa-stop';
+    status.textContent = '🎤 Gravando... fale o orçamento completo.';
+    finishBtn.disabled = false;
+    finishBtn.classList.remove('opacity-50');
+  } else {
+    btn.classList.remove('mic-pulsing', 'bg-rose-600');
+    btn.classList.add('bg-brand-600');
+    icon.className = 'fa-solid fa-microphone';
+    status.textContent = 'Dite o orçamento completo. Toque em parar para preencher.';
+    finishBtn.disabled = true;
+    finishBtn.classList.add('opacity-50');
+  }
+}
+
+// ===================== VOICE PARSER =====================
+function parseTranscript(text) {
+  const t = text.toLowerCase();
+
+  // Name: "para" / "cliente" / "nome" markers
+  let nome = '';
+  const nomeMatch = t.match(/(?:para|cliente|nome[:\s]+)([^,.\d]+)/i);
+  if (nomeMatch) nome = titleCase(nomeMatch[1].trim());
+
+  // Phone: sequence of 8-11 digits (with spaces/hyphens in spoken form)
+  let telefone = '';
+  const telMatch = text.match(/(?:telefone|fone|cel(?:ular)?|whatsapp)?[\s:]*(\(?\d[\d\s\-().]{7,14}\d)/i);
+  if (telMatch) telefone = telMatch[1].replace(/[^\d]/g, '').replace(/^(\d{2})(\d{4,5})(\d{4})$/, '($1) $2-$3');
+
+  // Address: "rua", "avenida", "av", "endereço"
+  let endereco = '';
+  const endMatch = t.match(/((?:rua|avenida|av\.?|r\.|estrada|travessa|alameda|condomínio)[^,.\d(]*[\w\s]+(?:,\s*[\d]+)?(?:\s*[-–]\s*[^,.]+)?)/i);
+  if (endMatch) endereco = titleCase(endMatch[1].trim());
+
+  // Aparelho
+  let aparelho = '';
+  const apMatch = t.match(/(\d+\.?\d*\s*(?:btu|btus|mil\s*btus?)[\w\s]*(?:split|janela|piso|inverter)?|(?:split|janela|inverter|cassete|piso)[^\d]*\d+)/i);
+  if (apMatch) aparelho = titleCase(apMatch[0].trim());
+
+  // Itens: look for "X reais" / "R$ X" after commas or connectors
+  itemRows = [];
+  // Pattern: description + value like "mão de obra trezentos reais" or "material cento e cinquenta"
+  const itemPattern = /([a-záéíóúâêôãõç][a-záéíóúâêôãõç\s]{2,}?)(?:\s+(?:por|no valor de|custa|vale|r\$?\s*)?\s*)(\d[\d.,]*(?:\s*reais?|\s*conto)?)/gi;
+  let m;
+  const knownKeywords = ['nome','cliente','para','endereço','rua','avenida','av','telefone','fone','cel','whatsapp','btu','btus','split','aparelho'];
+  while ((m = itemPattern.exec(t)) !== null) {
+    const descRaw = m[1].trim();
+    if (knownKeywords.some(k => descRaw.includes(k))) continue;
+    if (descRaw.length < 3) continue;
+    const valRaw = m[2].replace(/[^\d,.]/g,'').replace(',','.');
+    const val = parseFloat(valRaw) || 0;
+    if (val > 0 && val < 100000) {
+      itemRows.push({ id: Date.now() + Math.random(), desc: titleCase(descRaw), val: val.toString() });
+    }
+  }
+
+  // Fallback: grab any currency values R$ X or X reais
+  if (itemRows.length === 0) {
+    const valMatches = [...text.matchAll(/(?:R\$\s*)?([\d.,]+)\s*(?:reais?|,00)?/gi)];
+    valMatches.forEach((vm, i) => {
+      const v = parseFloat(vm[1].replace(',','.'));
+      if (v > 0 && v < 100000) itemRows.push({ id: Date.now()+i, desc: 'Item ' + (i+1), val: v.toString() });
+    });
+  }
+
+  if (itemRows.length === 0) addItemRow();
+
+  // Fill form
+  if (nome) document.getElementById('f-nome').value = nome;
+  if (telefone) document.getElementById('f-telefone').value = telefone;
+  if (endereco) document.getElementById('f-endereco').value = endereco;
+  if (aparelho) document.getElementById('f-aparelho').value = aparelho;
+
+  renderItemRows();
+  showToast('Campos preenchidos! Confira e ajuste se necessário.');
+}
+
+// ===================== HELPERS =====================
+function formatBRL(v) {
+  return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR');
+}
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function digits(s) {
+  return String(s || '').replace(/\D/g, '');
+}
+
+function titleCase(s) {
+  return s.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
+}
+
+let toastTimer;
+function showToast(msg, duration = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), duration);
+}
+
+// ===================== STARTUP =====================
+document.addEventListener('DOMContentLoaded', () => {
+  // Seed an item row on modal open
+  renderItemRows();
+  init();
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+});
+</script>
 </body>
 </html>
