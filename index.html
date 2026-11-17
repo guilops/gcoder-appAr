@@ -66,12 +66,12 @@
 
   <!-- ===== HEADER ===== -->
   <header class="bg-white px-4 pt-4 pb-3 flex items-center justify-between sticky top-0 z-30 border-b border-slate-100 shadow-sm">
-    <div class="flex items-center gap-2">
+    <button onclick="openView('orcamentos')" class="flex items-center gap-2 cursor-pointer">
       <div class="bg-brand-600 text-white p-2 rounded-xl shadow flex items-center justify-center">
         <i class="fa-solid fa-snowflake text-base"></i>
       </div>
       <span class="text-base font-extrabold text-brand-600 leading-none">Ar no Preço Certo</span>
-    </div>
+    </button>
     <button onclick="openView('meus-dados')" class="relative" aria-label="Meus dados">
       <div id="avatar-circle" class="w-10 h-10 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-sm border-2 border-brand-100 overflow-hidden shadow">
         <span id="avatar-initials">AR</span>
@@ -204,7 +204,7 @@
         </div>
         <div class="p-4 space-y-1">
           <label class="text-[11px] text-slate-400 font-medium flex items-center gap-1.5"><i class="fa-brands fa-whatsapp text-brand-500"></i> Seu WhatsApp</label>
-          <input id="perfil-whatsapp" type="tel" placeholder="Ex.: (11) 99999-9999" class="w-full text-sm font-semibold text-slate-800 border-0 outline-none bg-transparent placeholder:text-slate-300">
+          <input id="perfil-whatsapp" type="tel" placeholder="Ex.: (11) 99999-9999" oninput="maskPhone(this)" class="w-full text-sm font-semibold text-slate-800 border-0 outline-none bg-transparent placeholder:text-slate-300">
         </div>
         <div class="p-4 space-y-1">
           <label class="text-[11px] text-slate-400 font-medium flex items-center gap-1.5"><i class="fa-solid fa-location-dot text-brand-500"></i> Cidade</label>
@@ -361,7 +361,7 @@
           </div>
           <div>
             <label class="block text-[11px] font-bold text-slate-500 mb-1">WhatsApp / Telefone</label>
-            <input type="text" id="f-telefone" placeholder="(11) 99999-9999" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
+            <input type="text" id="f-telefone" placeholder="(11) 99999-9999" oninput="maskPhone(this)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
           </div>
         </div>
         <div>
@@ -528,6 +528,21 @@ let isListening = false;
 let lastTranscript = '';
 let parcelasCount = 12;
 let pixTipoSel = 'cpf';
+
+// ===================== UTILS / MASKS =====================
+function maskPhone(el) {
+  let v = el.value.replace(/\D/g, '').slice(0, 11);
+  if (v.length > 10) {
+    v = v.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+  } else if (v.length > 6) {
+    v = v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+  } else if (v.length > 2) {
+    v = v.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+  } else {
+    v = v.replace(/^(\d*)/, '($1');
+  }
+  el.value = v;
+}
 
 // ===================== INIT =====================
 function init() {
@@ -827,11 +842,13 @@ function loadPagamentoForm() {
   document.getElementById('pag-parcelas-display').textContent = parcelasCount + 'x';
   pixTipoSel = pagamento.pixTipo || 'cpf';
   updatePixTipoUI();
+  updatePixChaveMask();
 }
 
 function setPixTipo(tipo) {
   pixTipoSel = tipo;
   updatePixTipoUI();
+  updatePixChaveMask();
 }
 
 function updatePixTipoUI() {
@@ -846,6 +863,39 @@ function updatePixTipoUI() {
     btn.classList.toggle('border-slate-200', !active);
     btn.classList.toggle('text-slate-600', !active);
   });
+}
+
+function updatePixChaveMask() {
+  const input = document.getElementById('pag-pix-chave');
+  if (!input) return;
+  const configs = {
+    cpf:      { placeholder: '000.000.000-00',         maxlength: '14', inputmode: 'numeric' },
+    cnpj:     { placeholder: '00.000.000/0001-00',     maxlength: '18', inputmode: 'numeric' },
+    celular:  { placeholder: '(11) 99999-9999',        maxlength: '15', inputmode: 'numeric' },
+    email:    { placeholder: 'seu@email.com',          maxlength: '100', inputmode: 'email' },
+    aleatoria:{ placeholder: 'Cole a chave aleatória', maxlength: '36', inputmode: 'text' }
+  };
+  const cfg = configs[pixTipoSel] || configs.cpf;
+  input.placeholder = cfg.placeholder;
+  input.maxLength = cfg.maxlength;
+  input.inputMode = cfg.inputmode;
+  // remove oninput anterior e aplica o correto
+  input.oninput = null;
+  if (pixTipoSel === 'cpf') {
+    input.oninput = () => {
+      let v = input.value.replace(/\D/g,'').slice(0,11);
+      v = v.replace(/^(\d{3})(\d)/,'$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/,'$1.$2.$3').replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/,'$1.$2.$3-$4');
+      input.value = v;
+    };
+  } else if (pixTipoSel === 'cnpj') {
+    input.oninput = () => {
+      let v = input.value.replace(/\D/g,'').slice(0,14);
+      v = v.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/,'$1.$2.$3/$4').replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/,'$1.$2.$3/$4-$5');
+      input.value = v;
+    };
+  } else if (pixTipoSel === 'celular') {
+    input.oninput = () => maskPhone(input);
+  }
 }
 
 function adjustParcelas(delta) {
