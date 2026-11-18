@@ -578,9 +578,6 @@ let currentSubTab = 'orcamentos';
 let currentView = 'orcamentos';
 let previousView = 'orcamentos';
 let currentOrcamento = null; // used in result modal
-let voiceRecognition = null;
-let isListening = false;
-let lastTranscript = '';
 let parcelasCount = 12;
 let pixTipoSel = 'cpf';
 
@@ -607,6 +604,7 @@ function init() {
   renderLogoPreview();
   loadPerfilForm();
   loadPagamentoForm();
+  initSpeechRecognition();
 }
 
 function loadData() {
@@ -855,14 +853,36 @@ function savePerfil() {
 function handleLogoUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
-  if (file.size > 2 * 1024 * 1024) { showToast('Imagem muito grande (máx 2MB)'); return; }
+  if (file.size > 5 * 1024 * 1024) { showToast('Imagem muito grande (máx 5MB)'); return; }
   const reader = new FileReader();
   reader.onload = ev => {
-    perfil.logo = ev.target.result;
-    saveData();
-    renderLogoPreview();
-    updateAvatar();
-    showToast('Logo atualizada!');
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const maxDim = 250;
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; } }
+        else { if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; } }
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        perfil.logo = canvas.toDataURL('image/png');
+      } catch(err) {
+        perfil.logo = ev.target.result;
+      }
+      saveData();
+      renderLogoPreview();
+      updateAvatar();
+      showToast('Logo atualizada com sucesso!');
+    };
+    img.onerror = () => {
+      perfil.logo = ev.target.result;
+      saveData();
+      renderLogoPreview();
+      updateAvatar();
+    };
+    img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
 }
@@ -976,21 +996,32 @@ function savePagamento() {
 let itemRows = [];
 
 function openQuoteModal(preloaded) {
-  itemRows = preloaded ? (preloaded.itens || []).map((it,i)=>({id:i, desc: it.desc, val: it.val})) : [];
+  stopVoice();
   if (!preloaded) {
+    itemRows = [];
     ['f-nome','f-telefone','f-endereco','f-aparelho'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+    currentOrcamento = null;
   } else {
-    document.getElementById('f-nome').value = preloaded.clienteNome || '';
-    document.getElementById('f-telefone').value = preloaded.clienteTelefone || '';
-    document.getElementById('f-endereco').value = preloaded.clienteEndereco || '';
-    document.getElementById('f-aparelho').value = preloaded.aparelho || '';
+    const rawItems = preloaded.itens || preloaded.items || [];
+    itemRows = rawItems.map((it, i) => ({
+      id: Date.now() + i,
+      desc: it.desc || '',
+      val: (it.val !== undefined ? it.val : it.price) || ''
+    }));
+    document.getElementById('f-nome').value = preloaded.clienteNome || preloaded.clientName || '';
+    document.getElementById('f-telefone').value = preloaded.clienteTelefone || preloaded.clientPhone || '';
+    document.getElementById('f-endereco').value = preloaded.clienteEndereco || preloaded.clientAddress || '';
+    document.getElementById('f-aparelho').value = preloaded.aparelho || preloaded.serviceDesc || preloaded.descricao || '';
+    currentOrcamento = preloaded;
   }
   renderItemRows();
+  updateVoiceUI(false);
+  const status = document.getElementById('modal-voice-status');
+  if (status) status.textContent = 'Toque no botão para gravar por voz.';
   document.getElementById('quote-modal').classList.remove('hidden');
-  currentOrcamento = preloaded || null;
 }
 
 function closeQuoteModal() {
@@ -1004,7 +1035,7 @@ function closeQuoteModalOutside(e) {
 
 function addItemRow(desc, val) {
   const id = Date.now() + Math.random();
-  itemRows.push({ id, desc: desc || '', val: val || '' });
+  itemRows.push({ id, desc: desc || '', val: val !== undefined ? val : '' });
   renderItemRows();
 }
 
@@ -1051,33 +1082,56 @@ function recalcTotal() {
 }
 
 function getFormData() {
-  // sync current input values to itemRows
+  // Sincroniza campos de itens
   itemRows.forEach(r => {
     const descEl = document.querySelector(`#row-${r.id} input[type="text"]`);
     const valEl = document.querySelector(`#row-${r.id} input[type="number"]`);
     if (descEl) r.desc = descEl.value;
     if (valEl) r.val = valEl.value;
   });
-  const total = itemRows.reduce((s, r) => s + (parseFloat(r.val) || 0), 0);
+  const validItems = itemRows.filter(r => r.desc || r.val).map(r => ({
+    desc: r.desc || 'Item',
+    val: parseFloat(r.val) || 0
+  }));
+  const total = validItems.reduce((s, r) => s + (r.val || 0), 0);
+
+  const clienteNome = document.getElementById('f-nome').value.trim();
+  const clienteTelefone = document.getElementById('f-telefone').value.trim();
+  const clienteEndereco = document.getElementById('f-endereco').value.trim();
+  const aparelho = document.getElementById('f-aparelho').value.trim();
+
   return {
     id: currentOrcamento ? currentOrcamento.id : genId(),
     criadoEm: currentOrcamento ? currentOrcamento.criadoEm : new Date().toISOString(),
     status: currentOrcamento ? currentOrcamento.status : 'pendente',
-    clienteNome: document.getElementById('f-nome').value.trim(),
-    clienteTelefone: document.getElementById('f-telefone').value.trim(),
-    clienteEndereco: document.getElementById('f-endereco').value.trim(),
-    aparelho: document.getElementById('f-aparelho').value.trim(),
-    itens: itemRows.filter(r => r.desc || r.val).map(r => ({ desc: r.desc, val: parseFloat(r.val) || 0 })),
+    clienteNome,
+    clienteTelefone,
+    clienteEndereco,
+    aparelho,
+    // compatibilidade dupla
+    clientName: clienteNome,
+    clientPhone: clienteTelefone,
+    clientAddress: clienteEndereco,
+    serviceDesc: aparelho,
+    itens: validItems,
+    items: validItems.map(i => ({ desc: i.desc, price: i.val })),
     total
   };
 }
 
 function saveAndGeneratePDF() {
   const data = getFormData();
-  if (!data.clienteNome) { showToast('Informe o nome do cliente'); return; }
-  if (data.itens.length === 0 || data.total === 0) { showToast('Adicione ao menos um item com valor'); return; }
+  if (!data.clienteNome) {
+    showToast('Informe o nome do cliente');
+    document.getElementById('f-nome').focus();
+    return;
+  }
+  if (data.itens.length === 0 || data.total === 0) {
+    showToast('Adicione ao menos um item com valor');
+    return;
+  }
 
-  // Update or add
+  // Atualiza ou insere
   const idx = orcamentos.findIndex(o => o.id === data.id);
   if (idx >= 0) orcamentos[idx] = data;
   else orcamentos.unshift(data);
@@ -1087,14 +1141,21 @@ function saveAndGeneratePDF() {
   renderAll();
   closeQuoteModal();
   openResultModal(data);
-  // Generate PDF after showing result
-  setTimeout(() => { try { generatePDF(data); } catch(e) { showToast('Orçamento salvo! PDF indisponível: ' + e.message); } }, 400);
+
+  // Download automático imediato do PDF
+  try {
+    generatePDF(data);
+  } catch(e) {
+    console.warn('Tentando download PDF alternativo:', e);
+    showToast('Orçamento salvo! Toque em "Baixar PDF" para baixar.');
+  }
 }
 
 // ===================== RESULT MODAL =====================
 function openResultModal(o) {
   currentOrcamento = o;
-  document.getElementById('result-num').textContent = 'Orçamento #' + String(orcamentos.indexOf(o) + 1 || 1).padStart(3, '0');
+  const quoteIndex = orcamentos.indexOf(o);
+  document.getElementById('result-num').textContent = 'Orçamento #' + String(quoteIndex >= 0 ? quoteIndex + 1 : 1).padStart(3, '0');
 
   // Técnico
   const nome = perfil.nome || 'Técnico';
@@ -1116,13 +1177,21 @@ function openResultModal(o) {
   }
 
   // Cliente
-  document.getElementById('result-cliente-nome').textContent = o.clienteNome || '—';
-  const clienteInfo = [o.clienteTelefone, o.clienteEndereco].filter(Boolean).join(' · ');
-  document.getElementById('result-cliente-info').textContent = clienteInfo || o.aparelho || '—';
+  const cNome = o.clienteNome || o.clientName || '—';
+  const cTel = o.clienteTelefone || o.clientPhone;
+  const cEnd = o.clienteEndereco || o.clientAddress;
+  const cServ = o.aparelho || o.serviceDesc || o.descricao;
+  document.getElementById('result-cliente-nome').textContent = cNome;
+  const clienteInfo = [cTel, cEnd].filter(Boolean).join(' · ');
+  document.getElementById('result-cliente-info').textContent = clienteInfo || cServ || '—';
 
   // Itens
+  const rawItems = (o.itens || o.items || []).map(it => ({
+    desc: it.desc || 'Item',
+    val: it.val !== undefined ? it.val : (it.price || 0)
+  }));
   const itemsEl = document.getElementById('result-items');
-  itemsEl.innerHTML = (o.itens || []).map(it => `
+  itemsEl.innerHTML = rawItems.map(it => `
     <div class="flex justify-between text-sm py-1 border-b border-slate-50">
       <span class="text-slate-700">${esc(it.desc)}</span>
       <span class="font-semibold text-slate-800">${formatBRL(it.val)}</span>
@@ -1134,7 +1203,7 @@ function openResultModal(o) {
   const pixB = document.getElementById('result-pix-block');
   if (pix) {
     pixB.classList.remove('hidden');
-    document.getElementById('result-pix-info').textContent = 'Chave Pix: ' + pix + ' — Link para copiar no PDF';
+    document.getElementById('result-pix-info').textContent = 'Chave Pix: ' + pix + (pagamento.pixTipo ? ' (' + pagamento.pixTipo.toUpperCase() + ')' : '');
   } else { pixB.classList.add('hidden'); }
 
   const cartaoB = document.getElementById('result-cartao-block');
@@ -1223,12 +1292,16 @@ function sendWhatsApp() {
   openResultModal(orcamentos[idx]);
 
   const o = currentOrcamento;
-  const nome = o.clienteNome || 'Cliente';
-  const telefone = digits(o.clienteTelefone || '');
+  const nome = o.clienteNome || o.clientName || 'Cliente';
+  const telefone = digits(o.clienteTelefone || o.clientPhone || '');
   let msg = `Olá ${nome}! 😊\n\nSegue o orçamento de ar-condicionado:\n\n`;
-  msg += `🔧 *Aparelho/Serviço:* ${o.aparelho || '—'}\n\n`;
+  msg += `🔧 *Aparelho/Serviço:* ${o.aparelho || o.serviceDesc || '—'}\n\n`;
   msg += `📋 *Itens:*\n`;
-  (o.itens || []).forEach(it => { msg += `  • ${it.desc}: ${formatBRL(it.val)}\n`; });
+  const items = o.itens || o.items || [];
+  items.forEach(it => {
+    const val = it.val !== undefined ? it.val : it.price;
+    msg += `  • ${it.desc}: ${formatBRL(val)}\n`;
+  });
   msg += `\n💰 *Total: ${formatBRL(o.total)}*\n`;
   if (pagamento.pixChave) msg += `\n💳 Pix: ${pagamento.pixChave}`;
   if (pagamento.parcelas) msg += `\n💳 Cartão: até ${pagamento.parcelas}x`;
@@ -1248,12 +1321,22 @@ function sendWhatsAppFor(id) {
   sendWhatsApp();
 }
 
-// ===================== PDF =====================
-function cleanPdfText(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}]/gu, '')
+// ===================== PDF (GERAÇÃO & DOWNLOAD) =====================
+function cleanPDF(val) {
+  if (val === null || val === undefined) return '';
+  return String(val)
+    .replace(/\u00a0/g, ' ')
+    .replace(/[\u2022\u25cf\u25cb]/g, '-')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[^\x00-\xFF]/g, '')
     .trim();
+}
+
+function formatPDFMoney(val) {
+  const num = Number(val || 0);
+  return 'R$ ' + num.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 function downloadPDF() {
@@ -1264,285 +1347,380 @@ function downloadPDF() {
   generatePDF(currentOrcamento);
 }
 
-function generatePDF(o) {
+function savePDFDocument(doc, fileName) {
+  // Tentativa direta com doc.save (método nativo oficial do jsPDF)
   try {
-    const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
-    if (!jsPDFLib) {
-      showToast('Biblioteca PDF carregando. Tentando novamente...');
+    doc.save(fileName);
+    showToast('PDF baixado com sucesso!');
+    return true;
+  } catch(err1) {
+    console.warn('doc.save falhou, tentando fallback Blob:', err1);
+    try {
+      const blob = doc.output('blob');
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
       setTimeout(() => {
-        const retryLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
-        if (retryLib) generatePDF(o);
-        else showToast('Erro ao carregar gerador de PDF. Verifique sua conexão.');
-      }, 1000);
-      return;
+        try { document.body.removeChild(link); } catch(e){}
+      }, 3000);
+      showToast('PDF baixado com sucesso!');
+      return true;
+    } catch(err2) {
+      console.error('Falha geral ao salvar PDF:', err2);
+      showToast('Erro ao baixar PDF: ' + err2.message);
+      return false;
     }
+  }
+}
 
-    const doc = new jsPDFLib({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const W = 210, margin = 15;
-    let y = margin;
+function generatePDF(quote) {
+  if (!quote) {
+    showToast('Nenhum orçamento selecionado.');
+    return;
+  }
+  const jsPDFLib = window.jspdf?.jsPDF || window.jsPDF;
+  if (!jsPDFLib) {
+    showToast('Biblioteca de PDF indisponível. Verifique sua conexão e tente novamente.');
+    return;
+  }
 
-    // Header background - Verde Petróleo Profundo
-    doc.setFillColor(15, 118, 110);
-    doc.roundedRect(margin, y, W - margin * 2, 28, 3, 3, 'F');
+  try {
+    const doc = new jsPDFLib({ unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 16;
+    const contentWidth = pageWidth - margin * 2;
 
-    // Logo / initials in header
-    const initials = getInitials(perfil.nome || 'AR');
-    let hasLogo = false;
-    if (perfil.logo) {
-      try {
-        const format = perfil.logo.includes('image/png') ? 'PNG' : 'JPEG';
-        doc.addImage(perfil.logo, format, margin + 3, y + 3, 22, 22);
-        hasLogo = true;
-      } catch(e) {
-        console.warn('Erro ao inserir logo no PDF:', e);
+    const addHeader = () => {
+      // Faixa Superior: Verde Petróleo Profundo
+      doc.setFillColor(15, 118, 110);
+      doc.rect(0, 0, pageWidth, 36, 'F');
+
+      // Logo ou iniciais
+      const initials = cleanPDF(getInitials(perfil.nome || 'AR'));
+      let hasLogo = false;
+      if (perfil.logo && typeof perfil.logo === 'string' && perfil.logo.startsWith('data:image/')) {
+        try {
+          let format = 'JPEG';
+          if (perfil.logo.includes('image/png')) format = 'PNG';
+          else if (perfil.logo.includes('image/jpeg') || perfil.logo.includes('image/jpg')) format = 'JPEG';
+          doc.addImage(perfil.logo, format, margin, 7, 22, 22);
+          hasLogo = true;
+        } catch(e) {
+          console.warn('Logo ignorada no PDF:', e);
+          hasLogo = false;
+        }
       }
-    }
-    if (!hasLogo) {
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(margin + 3, y + 3, 22, 22, 2, 2, 'F');
-      doc.setTextColor(15, 118, 110);
-      doc.setFontSize(13);
+
+      if (!hasLogo) {
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(margin, 7, 22, 22, 3, 3, 'F');
+        doc.setTextColor(15, 118, 110);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text(initials, margin + 11, 21, { align: 'center' });
+      }
+
+      // Nome da empresa ou técnico
+      doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.text(initials, margin + 14, y + 17, { align: 'center' });
-    }
+      doc.setFontSize(14);
+      const nomeEmpresa = cleanPDF(perfil.empresa || perfil.nome || 'AR NO PRECO CERTO');
+      doc.text(nomeEmpresa, margin + 27, 16);
 
-    // Técnico info in header
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    const nomeTec = cleanPdfText(perfil.empresa || perfil.nome || 'Tecnico de Climatizacao');
-    doc.text(nomeTec, margin + 28, y + 10);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    const subParts = [
-      perfil.nome && perfil.empresa ? cleanPdfText(perfil.nome) : null,
-      perfil.whatsapp ? 'WhatsApp: ' + cleanPdfText(perfil.whatsapp) : null,
-      perfil.cidade ? cleanPdfText(perfil.cidade) : null
-    ].filter(Boolean);
-    if (subParts.length) doc.text(subParts.join('  |  '), margin + 28, y + 16);
-
-    // Orçamento #
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    const num = '#' + String((orcamentos.indexOf(o) >= 0 ? orcamentos.indexOf(o) + 1 : 1)).padStart(4, '0');
-    doc.text('ORCAMENTO ' + num, W - margin - 4, y + 10, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.text('Data: ' + formatDate(o.criadoEm), W - margin - 4, y + 16, { align: 'right' });
-
-    y += 34;
-
-    // Client section
-    doc.setFillColor(240, 253, 250); // Verde menta suave
-    doc.roundedRect(margin, y, W - margin * 2, 22, 2, 2, 'F');
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 118, 110);
-    doc.text('DADOS DO CLIENTE', margin + 4, y + 5.5);
-
-    doc.setTextColor(30, 41, 59);
-    doc.setFontSize(10.5);
-    doc.setFont('helvetica', 'bold');
-    doc.text(cleanPdfText(o.clienteNome || 'Cliente'), margin + 4, y + 12);
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    const clienteInfo = [
-      o.clienteTelefone ? 'Tel: ' + cleanPdfText(o.clienteTelefone) : null,
-      o.clienteEndereco ? 'Local: ' + cleanPdfText(o.clienteEndereco) : null
-    ].filter(Boolean).join('   |   ');
-    if (clienteInfo) doc.text(clienteInfo, margin + 4, y + 18);
-
-    y += 27;
-
-    // Aparelho / Serviço
-    if (o.aparelho) {
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(15, 118, 110);
-      doc.text('Aparelho / Servico:', margin, y);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(30, 41, 59);
-      doc.text(cleanPdfText(o.aparelho), margin + 35, y);
-      y += 8;
-    }
+      doc.setFontSize(8.5);
+      const subTec = [perfil.nome && perfil.empresa ? cleanPDF(perfil.nome) : null, cleanPDF(perfil.whatsapp), cleanPDF(perfil.cidade)].filter(Boolean).join('  -  ');
+      if (subTec) doc.text(subTec, margin + 27, 23);
 
-    // Items table header
-    doc.setFillColor(241, 245, 249);
-    doc.rect(margin, y, W - margin * 2, 7, 'F');
-    doc.setFontSize(8);
+      const idStr = cleanPDF(String(quote.id || 'ORC-001'));
+      const dataStr = cleanPDF(quote.date || (quote.criadoEm ? formatDate(quote.criadoEm) : new Date().toLocaleDateString('pt-BR')));
+      doc.setFontSize(8);
+      doc.text(`ORCAMENTO: ${idStr}   -   ${dataStr}`, margin + 27, 29);
+      doc.setTextColor(30, 41, 59);
+    };
+
+    addHeader();
+    let y = 48;
+
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(71, 85, 105);
-    doc.text('DESCRICAO DOS SERVICOS E MATERIAIS', margin + 3, y + 5);
-    doc.text('VALOR', W - margin - 3, y + 5, { align: 'right' });
-    y += 9;
+    doc.setFontSize(11);
+    doc.setTextColor(15, 118, 110);
+    doc.text('DADOS DO CLIENTE', margin, y);
+    y += 7;
 
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(30, 41, 59);
-    doc.setFontSize(8.5);
-    (o.itens || []).forEach((it, i) => {
-      if (i % 2 === 0) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(margin, y - 1, W - margin * 2, 6.5, 'F');
-      }
-      doc.text(cleanPdfText(it.desc || 'Item'), margin + 3, y + 3.8);
-      doc.text(formatBRL(it.val), W - margin - 3, y + 3.8, { align: 'right' });
-      y += 6.5;
+    doc.setFontSize(9.5);
+    doc.setTextColor(51, 65, 85);
+
+    const clientName = cleanPDF(quote.clienteNome || quote.clientName || 'Cliente');
+    const clientPhone = cleanPDF(quote.clienteTelefone || quote.clientPhone || 'Nao informado');
+    const clientAddress = cleanPDF(quote.clienteEndereco || quote.clientAddress || 'Nao informado');
+    const serviceDesc = cleanPDF(quote.aparelho || quote.serviceDesc || quote.descricao || 'Instalacao / Manutencao de Ar-Condicionado');
+
+    const infoList = [
+      ['Cliente', clientName],
+      ['Telefone', clientPhone],
+      ['Endereco da instalacao', clientAddress],
+      ['Servico / aparelho', serviceDesc]
+    ];
+
+    infoList.forEach(([label, value]) => {
+      const lineText = `${label}: ${value}`;
+      const lines = doc.splitTextToSize(lineText, contentWidth);
+      if (y + lines.length * 5 > pageHeight - 25) { doc.addPage(); addHeader(); y = 48; }
+      doc.text(lines, margin, y);
+      y += lines.length * 5 + 1;
     });
 
-    // Total
-    y += 2;
-    doc.setFillColor(15, 118, 110);
-    doc.roundedRect(margin, y, W - margin * 2, 10, 2, 2, 'F');
-    doc.setTextColor(255, 255, 255);
+    y += 4;
+    const drawTableHeader = () => {
+      doc.setFillColor(241, 245, 249);
+      doc.roundedRect(margin, y, contentWidth, 9, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(71, 85, 105);
+      doc.text('DESCRICAO DO ITEM / MATERIAL', margin + 4, y + 6);
+      doc.text('VALOR', pageWidth - margin - 4, y + 6, { align: 'right' });
+      y += 12;
+    };
+    drawTableHeader();
+
+    const items = (quote.itens || quote.items || []).map(i => ({
+      desc: cleanPDF(i.desc || 'Item'),
+      price: Number((i.val !== undefined ? i.val : i.price) || 0)
+    }));
+
+    if (items.length === 0) {
+      items.push({ desc: 'Servico de Ar-Condicionado', price: Number(quote.total || 0) });
+    }
+
+    items.forEach(item => {
+      const lines = doc.splitTextToSize(item.desc, contentWidth - 45);
+      const rowHeight = Math.max(8, lines.length * 5 + 3);
+      if (y + rowHeight > pageHeight - 32) { doc.addPage(); addHeader(); y = 48; drawTableHeader(); }
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, y + rowHeight, pageWidth - margin, y + rowHeight);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(51, 65, 85);
+      doc.text(lines, margin + 4, y + 4.5);
+      doc.text(formatPDFMoney(item.price), pageWidth - margin - 4, y + 4.5, { align: 'right' });
+      y += rowHeight;
+    });
+
+    y += 6;
+    doc.setFillColor(240, 253, 250);
+    doc.roundedRect(margin, y, contentWidth, 14, 2, 2, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text('VALOR TOTAL DO ORCAMENTO', margin + 4, y + 6.8);
-    doc.text(formatBRL(o.total || 0), W - margin - 4, y + 6.8, { align: 'right' });
-    y += 16;
+    doc.setTextColor(15, 118, 110);
+    doc.setFontSize(11);
+    doc.text('TOTAL DO ORCAMENTO:', margin + 5, y + 9);
+    const totalVal = quote.total !== undefined ? quote.total : items.reduce((s, it) => s + it.price, 0);
+    doc.text(formatPDFMoney(totalVal), pageWidth - margin - 5, y + 9, { align: 'right' });
+    y += 18;
 
     // Condições de pagamento
-    const hasPag = pagamento.pixChave || pagamento.parcelas || pagamento.garantia || pagamento.validade;
+    const hasPag = pagamento && (pagamento.pixChave || pagamento.parcelas || pagamento.garantia || pagamento.validade);
     if (hasPag) {
-      doc.setFillColor(240, 253, 250);
       const pagLines = [];
       if (pagamento.pixChave) {
-        pagLines.push('Chave Pix: ' + cleanPdfText(pagamento.pixChave) + (pagamento.pixTipo ? ' (' + pagamento.pixTipo.toUpperCase() + ')' : ''));
+        pagLines.push('Chave Pix: ' + cleanPDF(pagamento.pixChave) + (pagamento.pixTipo ? ' (' + cleanPDF(pagamento.pixTipo).toUpperCase() + ')' : ''));
       }
       if (pagamento.parcelas) {
         const ac = pagamento.acrescimo ? ' (+' + pagamento.acrescimo + '% no cartao)' : ' sem juros';
         pagLines.push('Cartao de Credito: Parcela em ate ' + pagamento.parcelas + 'x' + ac);
       }
-      if (pagamento.garantia) {
-        pagLines.push('Garantia: ' + cleanPdfText(pagamento.garantia));
-      }
-      if (pagamento.validade) {
-        pagLines.push('Validade desta proposta: ' + pagamento.validade + ' dias');
-      }
+      if (pagamento.garantia) pagLines.push('Garantia: ' + cleanPDF(pagamento.garantia));
+      if (pagamento.validade) pagLines.push('Validade da proposta: ' + pagamento.validade + ' dias');
 
-      const pagH = pagLines.length * 5.5 + 8;
-      doc.roundedRect(margin, y, W - margin * 2, pagH, 2, 2, 'F');
-      doc.setFontSize(7.5);
+      const boxH = pagLines.length * 5.5 + 9;
+      if (y + boxH > pageHeight - 22) { doc.addPage(); addHeader(); y = 48; }
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(margin, y, contentWidth, boxH, 2, 2, 'F');
+      doc.setFontSize(8.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(15, 118, 110);
-      doc.text('CONDICOES DE PAGAMENTO E GARANTIA', margin + 4, y + 4.8);
-      y += 7.5;
+      doc.text('CONDICOES DE PAGAMENTO E GARANTIA', margin + 4, y + 5.5);
+      y += 8;
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(51, 65, 85);
       doc.setFontSize(8);
       pagLines.forEach(l => {
-        doc.text('• ' + l, margin + 4, y);
+        doc.text('- ' + l, margin + 4, y);
         y += 5.2;
       });
-      y += 4;
+      y += 5;
     }
 
-    // Footer
-    doc.setFontSize(7);
-    doc.setTextColor(148, 163, 184);
-    doc.text('Ar no Preco Certo  •  Orcamento profissional de climatizacao', W / 2, 287, { align: 'center' });
-
-    // Download compatível em qualquer plataforma
-    const safeName = (o.clienteNome || 'Cliente')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-zA-Z0-9_-]/g, '_');
-    const filename = 'Orcamento_' + safeName + '.pdf';
-
-    try {
-      const blob = doc.output('blob');
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
-      }, 1500);
-      showToast('PDF baixado com sucesso!');
-    } catch(errBlob) {
-      console.warn('Tentando doc.save direto:', errBlob);
-      try {
-        doc.save(filename);
-        showToast('PDF salvo!');
-      } catch(errSave) {
-        console.warn('Tentando window.open blob:', errSave);
-        const bUrl = doc.output('bloburl');
-        window.open(bUrl, '_blank');
-        showToast('PDF aberto para salvar');
-      }
+    // Rodapé em todas as páginas
+    const pages = doc.getNumberOfPages();
+    for (let page = 1; page <= pages; page++) {
+      doc.setPage(page);
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, pageHeight - 14, pageWidth - margin, pageHeight - 14);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text('Ar no Preco Certo - Orcamento profissional de servicos de climatizacao', margin, pageHeight - 9);
+      doc.text(`${page} / ${pages}`, pageWidth - margin, pageHeight - 9, { align: 'right' });
     }
-  } catch(err) {
-    console.error('Erro na geração do PDF:', err);
-    showToast('Erro ao gerar PDF: ' + err.message);
+
+    const safeName = cleanPDF(clientName).replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 35) || 'Cliente';
+    const safeId = cleanPDF(quote.id || '01').replace(/[^a-zA-Z0-9_-]+/g, '_');
+    const fileName = `Orcamento_${safeName}_${safeId}.pdf`;
+
+    savePDFDocument(doc, fileName);
+  } catch(e) {
+    console.error('Erro ao gerar PDF:', e);
+    showToast('Erro ao gerar PDF: ' + e.message);
   }
 }
 
-// ===================== VOICE RECOGNITION =====================
+// ===================== RECONHECIMENTO DE VOZ (WEB SPEECH API) =====================
+let recognition = null;
+let isListening = false;
+let voiceTranscript = '';
+
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+  if (recognition) return recognition;
+
+  try {
+    recognition = new SpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = function() {
+      isListening = true;
+      updateVoiceUI(true);
+    };
+
+    recognition.onresult = function(event) {
+      let fullText = '';
+      for (let i = 0; i < event.results.length; i++) {
+        fullText += ' ' + event.results[i][0].transcript;
+      }
+      voiceTranscript = fullText.replace(/\s+/g, ' ').trim();
+
+      const status = document.getElementById('modal-voice-status');
+      if (status && voiceTranscript) {
+        const preview = voiceTranscript.length > 55 ? '...' + voiceTranscript.slice(-55) : voiceTranscript;
+        status.textContent = '🎤 Ouvindo: "' + preview + '"';
+      }
+    };
+
+    recognition.onerror = function(event) {
+      console.warn('Erro recognition:', event.error);
+      if (event.error === 'not-allowed') {
+        showToast('Permita o acesso ao microfone nas configurações do navegador.');
+        stopVoice();
+      } else if (event.error === 'no-speech') {
+        // Silêncio momentâneo na fala, não interrompe
+      }
+    };
+
+    recognition.onend = function() {
+      const transcript = voiceTranscript.trim();
+      stopVoice();
+      if (transcript) {
+        parseVoiceTranscript(transcript);
+      }
+    };
+
+    return recognition;
+  } catch(e) {
+    console.error('Falha ao inicializar voz:', e);
+    return null;
+  }
+}
+
 function toggleVoice() {
-  if (isListening) finishVoice();
-  else startVoice();
+  if (!recognition) initSpeechRecognition();
+  if (!recognition) {
+    showToast('Reconhecimento de voz não suportado neste navegador.');
+    return;
+  }
+
+  if (isListening) {
+    finishVoice();
+  } else {
+    startVoice();
+  }
 }
 
 function startVoice() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    showToast('Reconhecimento de voz não suportado neste navegador');
-    return;
+  voiceTranscript = '';
+  isListening = true;
+  updateVoiceUI(true);
+
+  const status = document.getElementById('modal-voice-status');
+  if (status) status.textContent = '🎤 Microfone ativo... Fale o cliente, serviço e valores!';
+
+  try {
+    recognition.start();
+  } catch(e) {
+    console.warn('Erro ao iniciar recognition:', e);
+    try { recognition.stop(); } catch(err){}
+    setTimeout(() => {
+      try {
+        recognition.start();
+      } catch(err2) {
+        stopVoice();
+        showToast('Não foi possível ativar o microfone. Verifique as permissões.');
+      }
+    }, 200);
   }
-  if (voiceRecognition) { try { voiceRecognition.onend = null; voiceRecognition.stop(); } catch(e){} voiceRecognition = null; }
-  voiceRecognition = new SpeechRecognition();
-  voiceRecognition.lang = 'pt-BR';
-  voiceRecognition.continuous = true;
-  voiceRecognition.interimResults = true;
-  lastTranscript = '';
-  voiceRecognition.onstart = () => {
-    isListening = true;
-    updateVoiceUI(true);
-  };
-  voiceRecognition.onresult = e => {
-    let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) lastTranscript += ' ' + e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
-    }
-    // show live interim in status (not filling fields yet)
-    const status = document.getElementById('modal-voice-status');
-    if (status && interim) status.textContent = '🎤 ' + interim;
-  };
-  voiceRecognition.onerror = e => {
-    if (e.error === 'not-allowed') { showToast('Permita o microfone nas configurações do navegador'); isListening = false; updateVoiceUI(false); return; }
-    if (e.error !== 'no-speech' && e.error !== 'aborted') showToast('Erro no microfone: ' + e.error);
-  };
-  voiceRecognition.onend = () => {
-    if (isListening) {
-      // auto-restart to keep recording
-      try { voiceRecognition.start(); } catch(e) {}
-    } else {
-      updateVoiceUI(false);
-    }
-  };
-  try { voiceRecognition.start(); } catch(e) { showToast('Não foi possível iniciar o microfone'); }
 }
 
 function stopVoice() {
   isListening = false;
-  if (voiceRecognition) {
-    voiceRecognition.onend = null;
-    try { voiceRecognition.stop(); } catch(e) {}
-    voiceRecognition = null;
+  if (recognition) {
+    try { recognition.stop(); } catch(e){}
   }
   updateVoiceUI(false);
 }
 
 function finishVoice() {
-  const transcript = lastTranscript.trim();
-  stopVoice();
-  if (transcript) parseTranscript(transcript);
-  else showToast('Nenhum áudio detectado. Tente falar mais alto.');
+  if (!isListening) return;
+  isListening = false;
+
+  const text = document.getElementById('single-mic-text');
+  if (text) text.textContent = 'Preenchendo campos...';
+  const status = document.getElementById('modal-voice-status');
+  if (status) status.textContent = '⏳ Processando dados da sua fala...';
+
+  const transcript = voiceTranscript.trim();
+
+  if (recognition) {
+    try { recognition.stop(); } catch(e){}
+  }
+
+  if (transcript) {
+    // Transcrição capturada! Preenche imediatamente sem perda de tempo
+    setTimeout(() => {
+      updateVoiceUI(false);
+      parseVoiceTranscript(transcript);
+    }, 150);
+  } else {
+    // Se o último pacote ainda está no ar, aguarda 500ms
+    setTimeout(() => {
+      updateVoiceUI(false);
+      const lateTranscript = voiceTranscript.trim();
+      if (lateTranscript) {
+        parseVoiceTranscript(lateTranscript);
+      } else {
+        showToast('Nenhum áudio detectado. Fale mais perto do microfone e tente de novo.');
+        if (status) status.textContent = 'Toque no botão para gravar por voz.';
+      }
+    }, 500);
+  }
 }
 
 function updateVoiceUI(listening) {
@@ -1556,138 +1734,159 @@ function updateVoiceUI(listening) {
     btn.className = 'w-full py-3.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow mic-pulsing transition-all active:scale-[0.98] flex items-center justify-center gap-2.5';
     if (icon) icon.className = 'fa-solid fa-stop text-base';
     if (text) text.textContent = 'Parar e preencher campos';
-    if (status) status.textContent = '🎤 Gravando... fale normalmente. Ao terminar, toque no botão vermelho.';
+    if (status && !voiceTranscript) {
+      status.textContent = '🎤 Gravando... Ao terminar de falar, toque no botão para preencher.';
+    }
   } else {
     btn.className = 'w-full py-3.5 px-4 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-sm shadow transition-all active:scale-[0.98] flex items-center justify-center gap-2.5';
     if (icon) icon.className = 'fa-solid fa-microphone text-base';
     if (text) text.textContent = 'Gravar orçamento por voz';
-    if (status) status.textContent = 'Toque para falar cliente, endereço e valores. Ao terminar, toque nele para preencher.';
   }
 }
 
-// ===================== CONVERSOR DE NÚMEROS POR EXTENSO =====================
-function parseSpokenNumber(str) {
-  if (!str) return 0;
-  // Se contiver dígitos (ex: 450, 450,00, R$ 300)
-  const dig = str.match(/\d+(?:[.,]\d+)?/);
-  if (dig) return parseFloat(dig[0].replace(',', '.')) || 0;
-
-  const map = {
-    'zero':0, 'um':1, 'uma':1, 'dois':2, 'duas':2, 'tres':3, 'três':3, 'quatro':4, 'cinco':5,
-    'seis':6, 'sete':7, 'oito':8, 'nove':9, 'dez':10, 'onze':11, 'doze':12, 'treze':13,
-    'quatorze':14, 'catorze':14, 'quinze':15, 'dezesseis':16, 'dezessete':17, 'dezoito':18,
-    'dezenove':19, 'vinte':20, 'trinta':30, 'quarenta':40, 'cinquenta':50, 'sessenta':60,
-    'setenta':70, 'oitenta':80, 'noventa':90, 'cem':100, 'cento':100, 'duzentos':200,
-    'trezentos':300, 'quatrocentos':400, 'quinhentos':500, 'seiscentos':600, 'setecentos':700,
-    'oitocentos':800, 'novecentos':900
-  };
-
-  const tokens = str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[\s-]+/).filter(Boolean);
-  let total = 0, current = 0;
-  for (const t of tokens) {
-    if (t === 'e' || t === 'reais' || t === 'real' || t === 'conto') continue;
-    if (t === 'mil') {
-      total += (current === 0 ? 1 : current) * 1000;
-      current = 0;
-    } else if (map[t] !== undefined) {
-      current += map[t];
-    }
-  }
-  return total + current;
-}
-
-// ===================== VOICE PARSER =====================
-function parseTranscript(text) {
+// ===================== PARSER INTELIGENTE DE VOZ =====================
+function parseVoiceTranscript(text) {
   const original = text.trim();
-  const lower = original.toLowerCase();
-  const normalized = lower.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const normalized = original.normalize('NFD').replace(/\p{M}/gu, '');
 
-  // 1. NOME DO CLIENTE
-  let nome = '';
-  const nomeMatch = lower.match(/(?:cliente(?: e| eh)?|nome(?: do cliente)?(?: e| eh)?|para|orcamento para)\s*[:\-]?\s*([a-záéíóúâêôãõç\s]+?)(?=\s+(?:telefone|fone|celular|whats|whatsapp|endereco|rua|avenida|descricao|servico|aparelho|mao de obra|material|valor)|$)/i);
-  if (nomeMatch && nomeMatch[1].trim()) {
-    nome = titleCase(nomeMatch[1].trim());
-  }
+  const markers = [
+    /\b(?:orcamento\s+(?:para\s+)?(?:o\s+|a\s+)?(?:cliente\s+)?|meu\s+nome\s+(?:e|eh)\s*|me\s+chamo\s*|nome(?:\s+do\s+cliente)?(?:\s+(?:e|eh))?\s*|(?:o\s+|a\s+)?cliente(?:\s+(?:e|eh))?\s*)\s*[:, -]?/i,
+    /\b(?:telefone|celular|whatsapp|whats|numero)\s*(?:e|eh|:)?\s*/i,
+    /\b(?:endereco|local(?:\s+da\s+instalacao)?|rua|avenida|av\.)\s*(?:e|eh|:)?\s*/i,
+    /\b(?:descricao(?:\s+do\s+servico|\s+do\s+aparelho)?|servico|aparelho|instalacao\s+de|ar\s+condicionado|split|inverter)\s*(?:e|eh|:)?\s*/i,
+    /\b(?:materiais?|material|itens?|pecas?|mao(?:\s*de)?\s*obra)\s*[:, -]?/i
+  ];
 
-  // 2. TELEFONE / WHATSAPP
-  let telefone = '';
-  const telMatch = original.match(/(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?(?:9\s*)?\d{4}[-\s]?\d{4}/);
-  if (telMatch) {
-    const rawDigits = telMatch[0].replace(/\D/g, '');
-    if (rawDigits.length >= 8) {
-      if (rawDigits.length === 11) {
-        telefone = rawDigits.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
-      } else if (rawDigits.length === 10) {
-        telefone = rawDigits.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
-      } else {
-        telefone = rawDigits;
-      }
+  function nextMarkerIndex(from) {
+    let end = normalized.length;
+    for (const marker of markers) {
+      const search = new RegExp(marker.source, 'ig');
+      search.lastIndex = from;
+      const found = search.exec(normalized);
+      if (found && found.index > from && found.index < end) end = found.index;
     }
+    return end;
   }
 
-  // 3. ENDEREÇO
-  let endereco = '';
-  const endMatch = lower.match(/(?:endereco|local(?: da instalacao)?|rua|avenida|av\.?|alameda|travessa)\s*[:\-]?\s*([a-záéíóúâêôãõç0-9\s,\-]+?)(?=\s+(?:descricao|servico|aparelho|mao de obra|material|itens|valor)|$)/i);
-  if (endMatch && endMatch[1].trim()) {
-    let cleanEnd = endMatch[1].trim().replace(/^(?:e|eh|o|a)\s+/i, '');
-    endereco = titleCase(cleanEnd);
+  function section(marker, excludedMarkers) {
+    const match = marker.exec(normalized);
+    if (!match) return '';
+    const from = match.index + match[0].length;
+    let to = normalized.length;
+    for (const stop of excludedMarkers) {
+      const search = new RegExp(stop.source, 'ig');
+      search.lastIndex = from;
+      const found = search.exec(normalized);
+      if (found && found.index < to) to = found.index;
+    }
+    return original.slice(from, to).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
   }
 
-  // 4. APARELHO / SERVIÇO (sem escrever a palavra "descrição")
-  let aparelho = '';
-  const apMatch = lower.match(/(?:descricao(?: do servico| do aparelho)?|servico(?: de)?|aparelho|instalacao de|manutencao de|higienizacao de)\s*[:\-]?\s*([a-záéíóúâêôãõç0-9\s\.\/]+?)(?=\s+(?:mao de obra|materiais?|pecas?|valor|preco|itens)|$)/i);
-  if (apMatch && apMatch[1].trim()) {
-    let rawAp = apMatch[1].trim()
-      .replace(/^(?:do|da|de|e|eh|o|a|aparelho|servico|descricao)\s+/i, '')
-      .replace(/\s+(?:no valor|por|custa|vale)$/i, '');
-    if (rawAp) aparelho = titleCase(rawAp);
+  const nameMarker = /\b(?:orcamento\s+(?:para\s+)?(?:o\s+|a\s+)?(?:cliente\s+)?|meu\s+nome\s+(?:e|eh)\s*|me\s+chamo\s*|nome(?:\s+do\s+cliente)?(?:\s+(?:e|eh))?\s*|(?:o\s+|a\s+)?cliente(?:\s+(?:e|eh))?\s*)\s*[:, -]?/i;
+  const phoneMarker = /\b(?:telefone|celular|whatsapp|whats|numero)\s*(?:e|eh|:)?\s*/i;
+  const addressMarker = /\b(?:endereco|local(?:\s+da\s+instalacao)?|rua|avenida|av\.)\s*(?:e|eh|:)?\s*/i;
+  const serviceMarker = /\b(?:descricao(?:\s+do\s+servico|\s+do\s+aparelho)?|servico|aparelho|instalacao\s+de|ar\s+condicionado|split|inverter)\s*(?:e|eh|:)?\s*/i;
+  const itemMarker = /\b(?:materiais?|material|itens?|pecas?|mao(?:\s*de)?\s*obra)\s*[:, -]?/i;
+
+  let clientName = section(nameMarker, [phoneMarker, addressMarker, serviceMarker, itemMarker]);
+  if (!clientName) {
+    const firstStop = nextMarkerIndex(0);
+    clientName = original.slice(0, firstStop).replace(/^.*?\borcamento\s+(?:para\s+)?/i, '').replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
+  }
+  // Remove resíduos de gatilho do nome
+  clientName = clientName.replace(/^(?:(?:orcamento\s+(?:para\s+)?)|(?:o\s+|a\s+)?(?:cliente\s*(?:e|eh|:)?)|(?:nome(?:\s*do\s*cliente)?\s*(?:e|eh|:)?))\s*/i, '').trim();
+
+  const phoneText = section(phoneMarker, [addressMarker, serviceMarker, itemMarker]);
+  const phoneDigits = (phoneText.match(/\+?\d[\d\s().-]{7,}\d/) || [])[0] || '';
+  const address = section(addressMarker, [phoneMarker, serviceMarker, itemMarker]);
+
+  let service = section(serviceMarker, [phoneMarker, addressMarker, itemMarker]);
+  // Limpa termos gatilho para NUNCA escrever a palavra "descricao"
+  service = service.replace(/^(?:(?:descricao(?:\s+do\s+servico|\s+do\s+aparelho)?|servico|aparelho|de|do|da|e|eh|o|a)\s*[:\-]?\s*)+/i, '').trim();
+
+  if (!service) {
+    const serviceStart = normalized.search(/\b(?:ar\s+condicionado|split|inverter)\b/i);
+    if (serviceStart >= 0) service = original.slice(serviceStart, nextMarkerIndex(serviceStart)).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
+  }
+  const firstServiceMarker = serviceMarker.exec(normalized);
+  if (firstServiceMarker && /^instalacao\s+de/i.test(firstServiceMarker[0]) && !/^instalacao/i.test(service)) {
+    service = 'Instalação de ' + service;
   }
 
-  // Fallback para Aparelho se não capturou mas mencionou ar / split / inverter / btus
-  if (!aparelho) {
-    const directAp = lower.match(/(?:ar(?:\s+condicionado)?|split|inverter|piso teto|cassete|janela)(?:\s+\d+(?:\.\d+)?(?:\s*mil)?(?:\s*btus?)?)?/i);
-    if (directAp) aparelho = titleCase(directAp[0].trim());
+  // Conversão de números falados por extenso ou dígitos
+  function spokenNumber(value) {
+    if (!value) return 0;
+    const dig = value.match(/\d+(?:[.,]\d+)?/);
+    if (dig) return Number(dig[0].replace(',', '.'));
+    const values = {
+      zero:0, um:1, uma:1, dois:2, duas:2, tres:3, quatro:4, cinco:5, seis:6, sete:7, oito:8, nove:9,
+      dez:10, onze:11, doze:12, treze:13, quatorze:14, catorze:14, quinze:15, dezesseis:16, dezessete:17,
+      dezoito:18, dezenove:19, vinte:20, trinta:30, quarenta:40, cinquenta:50, sessenta:60, setenta:70,
+      oitenta:80, noventa:90, cem:100, cento:100, duzentos:200, trezentos:300, quatrocentos:400,
+      quinhentos:500, seiscentos:600, setecentos:700, oitocentos:800, novecentos:900
+    };
+    let total = 0, group = 0;
+    value.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').split(/\s+|\be\b/).filter(Boolean).forEach(word => {
+      if (word === 'mil') { total += (group || 1) * 1000; group = 0; }
+      else if (values[word] != null) group += values[word];
+    });
+    return total + group;
   }
 
-  // 5. MATERIAIS, MÃO DE OBRA E ITENS
+  // Lista de palavras numéricas ordenada por tamanho decrescente para não cortar prefixos
+  const numWordsList = ['quatrocentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos', 'quinhentos', 'trezentos', 'dezesseis', 'dezessete', 'cinquenta', 'duzentos', 'quatorze', 'dezenove', 'quarenta', 'sessenta', 'catorze', 'dezoito', 'setenta', 'oitenta', 'noventa', 'trinta', 'quinze', 'quatro', 'vinte', 'treze', 'cento', 'cinco', 'onze', 'doze', 'zero', 'dois', 'duas', 'tres', 'seis', 'sete', 'oito', 'nove', 'cem', 'mil', 'uma', 'dez', 'um'];
+  const numRegexStr = '(\\d+(?:[.,]\\d+)?|\\b(?:' + numWordsList.join('|') + ')\\b(?:\\s+(?:e\\s+)?\\b(?:' + numWordsList.join('|') + ')\\b)*)';
+
+  // Mão de Obra e Materiais
   itemRows = [];
 
-  // Mão de Obra
-  const maoObraMatch = lower.match(/mao\s*(?:de\s*)?obra\s*(?:e|eh|por|de|no valor de|custa|fica)?\s*([a-záéíóúâêôãõç0-9\s.,]+?)(?=\s+(?:e\s+)?(?:material|materiais|pecas?|tubo|cobre|total)|$)/i);
+  const maoObraRegex = new RegExp('mao(?:\\s*de)?\\s*obra\\s*(?:e|eh|por|de|no valor de|custa|fica)?\\s*' + numRegexStr + '\\s*(?:reais?|r\\$)?', 'i');
+  const maoObraMatch = normalized.match(maoObraRegex);
   if (maoObraMatch) {
-    const val = parseSpokenNumber(maoObraMatch[1]);
+    const val = spokenNumber(maoObraMatch[1]);
     if (val > 0) itemRows.push({ id: Date.now() + 1, desc: 'Mão de Obra', val: val.toString() });
   }
 
-  // Material / Materiais
-  const matMatch = lower.match(/(?:materiais?|pecas?|tubulacao)\s*(?:e|eh|por|de|no valor de|custa|fica)?\s*([a-záéíóúâêôãõç0-9\s.,]+?)(?=\s+(?:e\s+)?(?:mao\s*(?:de\s*)?obra|total)|$)/i);
+  const matRegex = new RegExp('(?:materiais?|material|pecas?|tubulacao)\\s*(?:e|eh|por|de|no valor de|custa|fica)?\\s*' + numRegexStr + '\\s*(?:reais?|r\\$)?', 'i');
+  const matMatch = normalized.match(matRegex);
   if (matMatch) {
-    const val = parseSpokenNumber(matMatch[1]);
+    const val = spokenNumber(matMatch[1]);
     if (val > 0) itemRows.push({ id: Date.now() + 2, desc: 'Materiais', val: val.toString() });
   }
 
-  // Itens genéricos com valores (ex: "instalação quinhentos reais", "suporte cem reais")
+  // Fallback: busca por itens genéricos com valores
   if (itemRows.length === 0) {
-    const itemRegex = /([a-záéíóúâêôãõç\s]{3,25}?)\s*(?:por|no valor de|custa|fica|r\$)\s*(\d+(?:[.,]\d+)?|[a-záéíóúâêôãõç\s]+?\s*reais)/gi;
-    let im;
-    const ignKeywords = ['nome', 'cliente', 'endereco', 'rua', 'telefone', 'whatsapp', 'descricao'];
-    while ((im = itemRegex.exec(lower)) !== null) {
-      const desc = im[1].trim();
-      if (ignKeywords.some(k => desc.includes(k))) continue;
-      const v = parseSpokenNumber(im[2]);
-      if (v > 0 && v < 100000) {
-        itemRows.push({ id: Date.now() + Math.random(), desc: titleCase(desc), val: v.toString() });
+    const amountPattern = /(?:r$s*)?(d+(?:[.,]d{1,2})?)s*(?:reais?|r$)/gi;
+    let itemStart = normalized.search(itemMarker);
+    if (itemStart < 0) {
+      const _svcM = new RegExp(serviceMarker.source, 'i').exec(normalized);
+      if (_svcM) itemStart = _svcM.index + _svcM[0].length;
+    }
+
+    let amount;
+    amountPattern.lastIndex = 0;
+    while ((amount = amountPattern.exec(normalized)) !== null) {
+      if (itemStart < 0 || amount.index < itemStart) continue;
+      const from = Math.max(itemStart, itemRows.length ? itemRows[itemRows.length - 1].end || itemStart : itemStart);
+      let desc = original.slice(from, amount.index)
+        .replace(/^[\s,:;-]+|[\s,:;-]+$/g, '')
+        .replace(/^(?:(?:e|tambem|material|materiais|item|itens|pecas|descricao|servico|aparelho)s*:?s*)+/i, '')
+        .replace(/\s+(?:por|a|no valor de)$/i, '')
+        .trim();
+      const val = spokenNumber(amount[1]);
+      if (val > 0) {
+        itemRows.push({ id: Date.now() + Math.random(), desc: titleCase(desc || 'Serviço'), val: val.toString(), end: amountPattern.lastIndex });
       }
     }
   }
 
-  // Fallback final: se encontrar qualquer número ou "X reais" no texto
+  // Fallback se nenhum item tiver sido adicionado mas tiver números no texto
   if (itemRows.length === 0) {
-    const anyVals = [...original.matchAll(/(?:R\$\s*)?(\d+(?:[.,]\d+)?)\s*(?:reais?|,00)?/gi)];
+    const anyVals = [...original.matchAll(/(?:R$s*)?(d+(?:[.,]d+)?)s*(?:reais?|,00)?/gi)];
     anyVals.forEach((vm, i) => {
       const v = parseFloat(vm[1].replace(',', '.'));
       if (v > 0 && v < 100000) {
-        const descLabel = (i === 0 && aparelho) ? 'Instalação / Serviço' : (i === 1 ? 'Material' : 'Item ' + (i + 1));
+        const descLabel = (i === 0 && service) ? 'Instalação / Mão de Obra' : (i === 1 ? 'Materiais' : 'Item ' + (i + 1));
         itemRows.push({ id: Date.now() + i, desc: descLabel, val: v.toString() });
       }
     });
@@ -1695,22 +1894,17 @@ function parseTranscript(text) {
 
   if (itemRows.length === 0) addItemRow();
 
-  // PREENCHER OS CAMPOS DO FORMULÁRIO
-  if (nome) document.getElementById('f-nome').value = nome;
-  if (telefone) document.getElementById('f-telefone').value = telefone;
-  if (endereco) document.getElementById('f-endereco').value = endereco;
-  if (aparelho) document.getElementById('f-aparelho').value = aparelho;
+  // Preencher os campos
+  if (clientName) document.getElementById('f-nome').value = titleCase(clientName);
+  if (phoneDigits || phoneText) document.getElementById('f-telefone').value = maskPhone(phoneDigits || phoneText);
+  if (address) document.getElementById('f-endereco').value = titleCase(address);
+  if (service) document.getElementById('f-aparelho').value = titleCase(service);
 
   renderItemRows();
+  showToast('Orçamento preenchido com sucesso!');
 
-  const filledCount = [nome, telefone, endereco, aparelho].filter(Boolean).length + (itemRows.length > 0 && itemRows[0].val ? 1 : 0);
-  if (filledCount > 0) {
-    showToast('Campos preenchidos com sucesso!');
-    const status = document.getElementById('modal-voice-status');
-    if (status) status.textContent = '✅ Campos preenchidos! Confira e faça ajustes se quiser.';
-  } else {
-    showToast('Áudio ouvido, mas nenhum dado reconhecido. Tente falar mais pausado.');
-  }
+  const status = document.getElementById('modal-voice-status');
+  if (status) status.textContent = '✅ Campos preenchidos! Confira e toque em Salvar e Gerar PDF.';
 }
 
 // ===================== HELPERS =====================
