@@ -82,13 +82,106 @@
       </div>
       <span class="text-base font-extrabold text-brand-600 leading-none">Ar no Preço Certo</span>
     </button>
-    <button onclick="openView('meus-dados')" class="relative" aria-label="Meus dados">
-      <div id="avatar-circle" class="w-10 h-10 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-sm border-2 border-brand-100 overflow-hidden shadow">
+    <!-- Botão Menu Hambúrguer com Avatar -->
+    <button onclick="toggleSideMenu()" class="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 px-2.5 py-1.5 rounded-2xl transition active:scale-95 shadow-xs" aria-label="Abrir menu">
+      <div id="avatar-circle" class="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs border border-brand-100 overflow-hidden shadow-xs">
         <span id="avatar-initials">AR</span>
         <img id="avatar-logo" src="" alt="Logo" class="hidden w-full h-full object-cover">
       </div>
+      <i class="fa-solid fa-bars text-slate-700 text-sm ml-0.5"></i>
     </button>
   </header>
+
+  <!-- ===== DRAWER / SIDE MENU HAMBÚRGUER ===== -->
+  <div id="side-menu-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden transition-opacity" onclick="toggleSideMenu()">
+    <div id="side-menu-drawer" class="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl z-50 flex flex-col transform translate-x-full transition-transform duration-300 ease-out" onclick="event.stopPropagation()">
+      <!-- Menu Header com Perfil -->
+      <div class="p-5 bg-gradient-to-br from-brand-700 to-brand-800 text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div id="drawer-avatar-circle" class="w-12 h-12 rounded-2xl bg-white/10 border-2 border-white/20 flex items-center justify-center overflow-hidden font-extrabold text-base shadow-inner">
+            <span id="drawer-avatar-initials">AR</span>
+            <img id="drawer-avatar-logo" src="" alt="Logo" class="hidden w-full h-full object-cover">
+          </div>
+          <div class="min-w-0">
+            <p id="drawer-user-name" class="font-extrabold text-sm truncate">Técnico</p>
+            <p id="drawer-user-company" class="text-xs text-brand-100 truncate">Ar no Preço Certo</p>
+          </div>
+        </div>
+        <button onclick="toggleSideMenu()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Opções do Menu -->
+      <div class="p-4 flex-1 overflow-y-auto space-y-2 text-slate-700 hide-scrollbar">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pt-1">Menu Principal</p>
+
+        <!-- Opção: Dados Cadastrais (Meus dados + CNPJ) -->
+        <button onclick="toggleSideMenu(); openView('meus-dados');" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl hover:bg-brand-50 text-slate-700 hover:text-brand-700 font-semibold text-sm transition">
+          <div class="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-id-card"></i>
+          </div>
+          <div class="text-left flex-1">
+            <p class="font-bold text-slate-800 text-sm">Dados cadastrais</p>
+            <p class="text-[11px] text-slate-400">Nome, empresa, CNPJ e logo</p>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+        </button>
+
+        <!-- Opção: Pix & Pagamentos -->
+        <button onclick="toggleSideMenu(); openView('pagamento');" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl hover:bg-brand-50 text-slate-700 hover:text-brand-700 font-semibold text-sm transition">
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-qrcode"></i>
+          </div>
+          <div class="text-left flex-1">
+            <p class="font-bold text-slate-800 text-sm">Pix & Pagamento</p>
+            <p class="text-[11px] text-slate-400">Chave Pix, cartão e garantia</p>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+        </button>
+
+        <!-- Opção: Tabela de Serviços -->
+        <button onclick="toggleSideMenu(); openView('servicos');" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl hover:bg-brand-50 text-slate-700 hover:text-brand-700 font-semibold text-sm transition">
+          <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-wrench"></i>
+          </div>
+          <div class="text-left flex-1">
+            <p class="font-bold text-slate-800 text-sm">Tabela de Serviços</p>
+            <p class="text-[11px] text-slate-400">Preços tabelados e atalhos</p>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+        </button>
+
+        <!-- Opção: Lista de Orçamentos -->
+        <button onclick="toggleSideMenu(); openView('orcamentos');" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl hover:bg-brand-50 text-slate-700 hover:text-brand-700 font-semibold text-sm transition">
+          <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-file-lines"></i>
+          </div>
+          <div class="text-left flex-1">
+            <p class="font-bold text-slate-800 text-sm">Orçamentos</p>
+            <p class="text-[11px] text-slate-400">Ver todos, aprovados e enviados</p>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+        </button>
+
+        <!-- Dica Profissional Box -->
+        <div class="mt-4 p-3.5 rounded-2xl bg-gradient-to-br from-brand-50 to-teal-50 border border-brand-100">
+          <div class="flex items-start gap-2.5">
+            <i class="fa-solid fa-lightbulb text-amber-500 text-sm mt-0.5 shrink-0"></i>
+            <div>
+              <p class="text-xs font-bold text-brand-900 mb-0.5">Dica para Fechar Mais</p>
+              <p class="text-[11px] text-slate-600 leading-relaxed">Adicione seu <strong>CNPJ</strong> nos <em>Dados Cadastrais</em> para transmitir mais segurança ao cliente e acelerar a aprovação das propostas!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer do Menu -->
+      <div class="p-4 border-t border-slate-100 bg-slate-50 text-center">
+        <p class="text-[11px] text-slate-400 font-medium">Ar no Preço Certo • Climatização Profissional</p>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== MAIN CONTENT AREA ===== -->
   <main class="flex-1 overflow-y-auto hide-scrollbar pb-28" id="main-scroll">
@@ -212,8 +305,8 @@
           <i class="fa-solid fa-arrow-left text-sm"></i>
         </button>
         <div>
-          <h2 class="text-lg font-extrabold text-slate-800">Meus dados</h2>
-          <p class="text-xs text-slate-500">Aparece no PDF e na mensagem</p>
+          <h2 class="text-lg font-extrabold text-slate-800">Dados cadastrais</h2>
+          <p class="text-xs text-slate-500">Aparece no cabeçalho do PDF e nos orçamentos</p>
         </div>
         <button onclick="openView('pagamento')" class="ml-auto text-brand-600 text-xs font-bold flex items-center gap-1 bg-brand-50 px-3 py-1.5 rounded-xl border border-brand-100">
           <i class="fa-solid fa-credit-card"></i> Pix/Cartão
@@ -249,6 +342,13 @@
         <div class="p-4 space-y-1">
           <label class="text-[11px] text-slate-400 font-medium flex items-center gap-1.5"><i class="fa-solid fa-store text-brand-500"></i> Nome da empresa</label>
           <input id="perfil-empresa" type="text" placeholder="Ex.: Frio Center Climatização" class="w-full text-sm font-semibold text-slate-800 border-0 outline-none bg-transparent placeholder:text-slate-300">
+        </div>
+        <div class="p-4 space-y-1">
+          <label class="text-[11px] text-slate-400 font-medium flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-id-card text-brand-500"></i> CNPJ ou CPF</span>
+            <span class="text-[10px] text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full font-bold">Opcional no PDF</span>
+          </label>
+          <input id="perfil-cnpj" type="text" placeholder="Ex.: 00.000.000/0001-00" oninput="maskCnpjCpf(this)" class="w-full text-sm font-semibold text-slate-800 border-0 outline-none bg-transparent placeholder:text-slate-300">
         </div>
         <div class="p-4 space-y-1">
           <label class="text-[11px] text-slate-400 font-medium flex items-center gap-1.5"><i class="fa-brands fa-whatsapp text-brand-500"></i> Seu WhatsApp</label>
@@ -391,9 +491,50 @@
           <i class="fa-solid fa-microphone text-base" id="single-mic-icon"></i>
           <span id="single-mic-text">Gravar orçamento por voz</span>
         </button>
-        <p id="modal-voice-status" class="text-xs text-center text-slate-500 font-medium">
-          Toque para falar cliente, endereço e valores. Ao terminar, toque nele para preencher.
+        <div class="flex items-center justify-between px-1 pt-1">
+          <p id="modal-voice-status" class="text-xs text-slate-500 font-medium truncate flex-1">
+            Toque para falar cliente, serviço e valores.
+          </p>
+          <button type="button" onclick="toggleVoiceTips()" class="text-[11px] text-brand-700 font-bold hover:underline shrink-0 ml-2">
+            <i class="fa-solid fa-circle-question mr-0.5"></i> Dicas de voz
+          </button>
+        </div>
+      </div>
+
+      <!-- Dicas de comando por voz colapsáveis -->
+      <div id="voice-tips-box" class="hidden p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1.5 fade-up">
+        <div class="flex items-center justify-between font-bold text-amber-800">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-microphone-lines text-amber-600"></i> Como ditar seu orçamento:</span>
+          <button type="button" onclick="toggleVoiceTips()" class="text-amber-600 hover:text-amber-800"><i class="fa-solid fa-xmark text-xs"></i></button>
+        </div>
+        <p class="text-[11px] text-amber-800/90 leading-relaxed">
+          Fale naturalmente: <em>"Cliente Carlos, telefone 11988887777, endereço Rua das Flores 123, descrição instalação de ar split, mão de obra quatrocentos e cinquenta reais e materiais cento e oitenta reais."</em>
         </p>
+        <p class="text-[11px] text-amber-900 font-semibold">
+          💡 Ao terminar de falar, toque no botão vermelho <strong>"Parar e preencher"</strong>!
+        </p>
+      </div>
+
+      <!-- Modelos Rápidos de Serviço com 1 toque -->
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Modelos Rápidos</p>
+          <span class="text-[10px] text-slate-400">Toque p/ preencher</span>
+        </div>
+        <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1">
+          <button type="button" onclick="applyServiceTemplate('Instalação Ar Split', 450)" class="whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-brand-50 text-slate-700 hover:text-brand-700 text-xs font-semibold border border-slate-200/60 transition active:scale-95 flex items-center gap-1">
+            ❄️ Instalação Split
+          </button>
+          <button type="button" onclick="applyServiceTemplate('Higienização Completa', 220)" class="whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-brand-50 text-slate-700 hover:text-brand-700 text-xs font-semibold border border-slate-200/60 transition active:scale-95 flex items-center gap-1">
+            🧼 Higienização
+          </button>
+          <button type="button" onclick="applyServiceTemplate('Carga de Gás R410A', 280)" class="whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-brand-50 text-slate-700 hover:text-brand-700 text-xs font-semibold border border-slate-200/60 transition active:scale-95 flex items-center gap-1">
+            🧪 Carga de Gás
+          </button>
+          <button type="button" onclick="applyServiceTemplate('Manutenção Corretiva', 180)" class="whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-brand-50 text-slate-700 hover:text-brand-700 text-xs font-semibold border border-slate-200/60 transition active:scale-95 flex items-center gap-1">
+            ⚡ Manutenção
+          </button>
+        </div>
       </div>
 
       <!-- 1. Dados do Cliente -->
@@ -834,21 +975,77 @@ function setFilter(f) {
 
 // ===================== PERFIL =====================
 function loadPerfilForm() {
-  if (perfil.nome) document.getElementById('perfil-nome').value = perfil.nome;
-  if (perfil.empresa) document.getElementById('perfil-empresa').value = perfil.empresa;
-  if (perfil.whatsapp) document.getElementById('perfil-whatsapp').value = perfil.whatsapp;
-  if (perfil.cidade) document.getElementById('perfil-cidade').value = perfil.cidade;
+  document.getElementById('perfil-nome').value = perfil.nome || '';
+  document.getElementById('perfil-empresa').value = perfil.empresa || '';
+  const cnpjEl = document.getElementById('perfil-cnpj');
+  if (cnpjEl) cnpjEl.value = perfil.cnpj || '';
+  document.getElementById('perfil-whatsapp').value = perfil.whatsapp || '';
+  document.getElementById('perfil-cidade').value = perfil.cidade || '';
 }
 
 function savePerfil() {
   perfil.nome = document.getElementById('perfil-nome').value.trim();
   perfil.empresa = document.getElementById('perfil-empresa').value.trim();
+  const cnpjEl = document.getElementById('perfil-cnpj');
+  if (cnpjEl) perfil.cnpj = cnpjEl.value.trim();
   perfil.whatsapp = document.getElementById('perfil-whatsapp').value.trim();
   perfil.cidade = document.getElementById('perfil-cidade').value.trim();
   saveData();
   updateAvatar();
-  showToast('Dados salvos!');
-  setTimeout(() => openView('orcamentos'), 800);
+  showToast('Dados cadastrais salvos com sucesso!');
+  setTimeout(() => goBack(), 600);
+}
+
+function maskCnpjCpf(el) {
+  let v = el.value.replace(/\D/g, '').slice(0, 14);
+  if (v.length <= 11) {
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  } else {
+    v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+    v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+    v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+    v = v.replace(/(\d{4})(\d)/, '$1-$2');
+  }
+  el.value = v;
+}
+
+function toggleSideMenu() {
+  const overlay = document.getElementById('side-menu-overlay');
+  const drawer = document.getElementById('side-menu-drawer');
+  if (!overlay || !drawer) return;
+  const isHidden = overlay.classList.contains('hidden');
+  if (isHidden) {
+    const initials = getInitials(perfil.nome || '');
+    const drawerInitials = document.getElementById('drawer-avatar-initials');
+    const drawerLogo = document.getElementById('drawer-avatar-logo');
+    if (drawerInitials) drawerInitials.textContent = initials || 'AR';
+    if (drawerLogo) {
+      if (perfil.logo) {
+        drawerLogo.src = perfil.logo;
+        drawerLogo.classList.remove('hidden');
+        if (drawerInitials) drawerInitials.classList.add('hidden');
+      } else {
+        drawerLogo.classList.add('hidden');
+        if (drawerInitials) drawerInitials.classList.remove('hidden');
+      }
+    }
+    const nameEl = document.getElementById('drawer-user-name');
+    if (nameEl) nameEl.textContent = perfil.nome || 'Técnico';
+    const compEl = document.getElementById('drawer-user-company');
+    if (compEl) compEl.textContent = perfil.empresa ? (perfil.empresa + (perfil.cnpj ? ' • ' + perfil.cnpj : '')) : (perfil.cnpj || 'Ar no Preço Certo');
+
+    overlay.classList.remove('hidden');
+    setTimeout(() => {
+      drawer.classList.remove('translate-x-full');
+    }, 15);
+  } else {
+    drawer.classList.add('translate-x-full');
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+    }, 280);
+  }
 }
 
 function handleLogoUpload(e) {
@@ -996,6 +1193,13 @@ function savePagamento() {
 // ===================== QUOTE MODAL =====================
 let itemRows = [];
 
+// Gerador de ID limpo e seguro (sem decimais que quebram seletores CSS)
+let itemRowCounter = 0;
+function genItemRowId() {
+  itemRowCounter++;
+  return 'it_' + Date.now() + '_' + itemRowCounter;
+}
+
 function openQuoteModal(preloaded) {
   stopVoice();
   if (!preloaded) {
@@ -1007,8 +1211,8 @@ function openQuoteModal(preloaded) {
     currentOrcamento = null;
   } else {
     const rawItems = preloaded.itens || preloaded.items || [];
-    itemRows = rawItems.map((it, i) => ({
-      id: Date.now() + i,
+    itemRows = rawItems.map((it) => ({
+      id: genItemRowId(),
       desc: it.desc || '',
       val: (it.val !== undefined ? it.val : it.price) || ''
     }));
@@ -1035,13 +1239,13 @@ function closeQuoteModalOutside(e) {
 }
 
 function addItemRow(desc, val) {
-  const id = Date.now() + Math.random();
+  const id = genItemRowId();
   itemRows.push({ id, desc: desc || '', val: val !== undefined ? val : '' });
   renderItemRows();
 }
 
 function removeItemRow(id) {
-  itemRows = itemRows.filter(r => r.id != id);
+  itemRows = itemRows.filter(r => String(r.id) !== String(id));
   renderItemRows();
 }
 
@@ -1054,12 +1258,12 @@ function renderItemRows() {
   container.innerHTML = itemRows.map(r => `
     <div class="item-row" id="row-${r.id}">
       <input type="text" placeholder="Descrição do item" value="${esc(r.desc)}"
-        oninput="updateItemDesc(${r.id}, this.value)"
+        oninput="updateItemDesc('${r.id}', this.value)"
         class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
       <input type="number" placeholder="0,00" value="${r.val}"
-        oninput="updateItemVal(${r.id}, this.value)"
+        oninput="updateItemVal('${r.id}', this.value)"
         class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500 w-24 text-right">
-      <button onclick="removeItemRow(${r.id})" class="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 text-rose-400 flex items-center justify-center hover:bg-rose-100 transition shrink-0">
+      <button type="button" onclick="removeItemRow('${r.id}')" class="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 text-rose-400 flex items-center justify-center hover:bg-rose-100 transition shrink-0">
         <i class="fa-solid fa-xmark text-xs"></i>
       </button>
     </div>`).join('');
@@ -1067,12 +1271,12 @@ function renderItemRows() {
 }
 
 function updateItemDesc(id, v) {
-  const row = itemRows.find(r => r.id == id);
+  const row = itemRows.find(r => String(r.id) === String(id));
   if (row) row.desc = v;
 }
 
 function updateItemVal(id, v) {
-  const row = itemRows.find(r => r.id == id);
+  const row = itemRows.find(r => String(r.id) === String(id));
   if (row) { row.val = v; recalcTotal(); }
 }
 
@@ -1082,24 +1286,31 @@ function recalcTotal() {
   return total;
 }
 
+// CORREÇÃO DEFINITIVA DO getFormData: NUNCA usa querySelector('#row-' + id) que quebrava seletores!
 function getFormData() {
-  // Sincroniza campos de itens
   itemRows.forEach(r => {
-    const descEl = document.querySelector(`#row-${r.id} input[type="text"]`);
-    const valEl = document.querySelector(`#row-${r.id} input[type="number"]`);
-    if (descEl) r.desc = descEl.value;
-    if (valEl) r.val = valEl.value;
+    const rowEl = document.getElementById('row-' + r.id);
+    if (rowEl) {
+      const descEl = rowEl.querySelector('input[type="text"]');
+      const valEl = rowEl.querySelector('input[type="number"]');
+      if (descEl) r.desc = descEl.value;
+      if (valEl) r.val = valEl.value;
+    }
   });
+
   const validItems = itemRows.filter(r => r.desc || r.val).map(r => ({
     desc: r.desc || 'Item',
     val: parseFloat(r.val) || 0
   }));
   const total = validItems.reduce((s, r) => s + (r.val || 0), 0);
 
-  const clienteNome = document.getElementById('f-nome').value.trim();
+  let clienteNome = document.getElementById('f-nome').value.trim();
+  if (!clienteNome) clienteNome = 'Cliente';
   const clienteTelefone = document.getElementById('f-telefone').value.trim();
   const clienteEndereco = document.getElementById('f-endereco').value.trim();
   const aparelho = document.getElementById('f-aparelho').value.trim();
+
+  const finalItens = validItems.length > 0 ? validItems : [{ desc: aparelho || 'Serviço de Climatização', val: total }];
 
   return {
     id: currentOrcamento ? currentOrcamento.id : genId(),
@@ -1109,46 +1320,60 @@ function getFormData() {
     clienteTelefone,
     clienteEndereco,
     aparelho,
-    // compatibilidade dupla
     clientName: clienteNome,
     clientPhone: clienteTelefone,
     clientAddress: clienteEndereco,
     serviceDesc: aparelho,
-    itens: validItems,
-    items: validItems.map(i => ({ desc: i.desc, price: i.val })),
+    itens: finalItens,
+    items: finalItens.map(i => ({ desc: i.desc, price: i.val })),
     total
   };
 }
 
 function saveAndGeneratePDF() {
-  const data = getFormData();
-  if (!data.clienteNome) {
-    data.clienteNome = 'Cliente';
-  }
-  if (!data.itens || data.itens.length === 0) {
-    const sDesc = data.aparelho || 'Instalação / Manutenção de Ar-Condicionado';
-    data.itens = [{ desc: sDesc, val: data.total || 0 }];
-    data.items = [{ desc: sDesc, price: data.total || 0 }];
-  }
-
-  // Atualiza ou insere
-  const idx = orcamentos.findIndex(o => o.id === data.id);
-  if (idx >= 0) orcamentos[idx] = data;
-  else orcamentos.unshift(data);
-
-  currentOrcamento = data;
-  saveData();
-  renderAll();
-  closeQuoteModal();
-  openResultModal(data);
-
-  // Download automático imediato do PDF
   try {
-    generatePDF(data);
+    const data = getFormData();
+
+    // Atualiza ou insere na lista
+    const idx = orcamentos.findIndex(o => o.id === data.id);
+    if (idx >= 0) orcamentos[idx] = data;
+    else orcamentos.unshift(data);
+
+    currentOrcamento = data;
+    saveData();
+    renderAll();
+    closeQuoteModal();
+    openResultModal(data);
+
+    // Download imediato do PDF
+    try {
+      generatePDF(data);
+    } catch(errPdf) {
+      console.warn('generatePDF direto falhou:', errPdf);
+      showToast('Orçamento salvo! Toque em "Baixar PDF" para baixar.');
+    }
   } catch(e) {
-    console.warn('Tentando download PDF alternativo:', e);
-    showToast('Orçamento salvo! Toque em "Baixar PDF" para baixar.');
+    console.error('Erro em saveAndGeneratePDF:', e);
+    showToast('Erro ao salvar orçamento: ' + e.message);
   }
+}
+
+// Novos métodos para modelos rápidos e dicas
+function applyServiceTemplate(name, defaultPrice) {
+  const ap = document.getElementById('f-aparelho');
+  if (ap) ap.value = name;
+  if (itemRows.length === 0 || (itemRows.length === 1 && !itemRows[0].desc && !itemRows[0].val)) {
+    itemRows = [{ id: genItemRowId(), desc: name, val: defaultPrice.toString() }];
+  } else {
+    itemRows.push({ id: genItemRowId(), desc: name, val: defaultPrice.toString() });
+  }
+  renderItemRows();
+  showToast('Modelo "' + name + '" aplicado!');
+}
+
+function toggleVoiceTips() {
+  const box = document.getElementById('voice-tips-box');
+  if (box) box.classList.toggle('hidden');
 }
 
 // ===================== RESULT MODAL =====================
@@ -1160,7 +1385,8 @@ function openResultModal(o) {
   // Técnico
   const nome = perfil.nome || 'Técnico';
   document.getElementById('result-tecnico-nome').textContent = perfil.empresa ? perfil.empresa + ' — ' + nome : nome;
-  const info = [perfil.whatsapp, perfil.cidade].filter(Boolean).join(' · ');
+  const cnpjInfo = perfil.cnpj ? (perfil.cnpj.length > 14 ? 'CNPJ: ' : 'CPF: ') + perfil.cnpj : '';
+  const info = [cnpjInfo, perfil.whatsapp, perfil.cidade].filter(Boolean).join(' · ');
   document.getElementById('result-tecnico-info').textContent = info || '—';
 
   // Logo
@@ -1456,7 +1682,8 @@ function generatePDF(quote) {
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
-      const subTec = [perfil.nome && perfil.empresa ? cleanPDF(perfil.nome) : null, cleanPDF(perfil.whatsapp), cleanPDF(perfil.cidade)].filter(Boolean).join('  -  ');
+      const cnpjStr = perfil.cnpj ? (perfil.cnpj.length > 14 ? 'CNPJ: ' : 'CPF: ') + cleanPDF(perfil.cnpj) : null;
+      const subTec = [perfil.nome && perfil.empresa ? cleanPDF(perfil.nome) : null, cnpjStr, cleanPDF(perfil.whatsapp), cleanPDF(perfil.cidade)].filter(Boolean).join('  -  ');
       if (subTec) doc.text(subTec, margin + 27, 23);
 
       const idStr = cleanPDF(String(quote.id || 'ORC-001'));
@@ -1867,14 +2094,14 @@ function parseVoiceTranscript(text) {
   const maoObraMatch = normalized.match(maoObraRegex);
   if (maoObraMatch) {
     const val = spokenNumber(maoObraMatch[1]);
-    if (val > 0) itemRows.push({ id: Date.now() + 1, desc: 'Mão de Obra', val: val.toString() });
+    if (val > 0) itemRows.push({ id: genItemRowId(), desc: 'Mão de Obra', val: val.toString() });
   }
 
   const matRegex = new RegExp('(?:materiais?|material|pecas?|tubulacao)\\s*(?:e|eh|por|de|no valor de|custa|fica)?\\s*' + numRegexStr + '\\s*(?:reais?|r\\$)?', 'i');
   const matMatch = normalized.match(matRegex);
   if (matMatch) {
     const val = spokenNumber(matMatch[1]);
-    if (val > 0) itemRows.push({ id: Date.now() + 2, desc: 'Materiais', val: val.toString() });
+    if (val > 0) itemRows.push({ id: genItemRowId(), desc: 'Materiais', val: val.toString() });
   }
 
   // Fallback: busca por itens genéricos com valores
@@ -1898,7 +2125,7 @@ function parseVoiceTranscript(text) {
         .trim();
       const val = spokenNumber(amount[1]);
       if (val > 0) {
-        itemRows.push({ id: Date.now() + Math.random(), desc: titleCase(desc || 'Serviço'), val: val.toString(), end: amountPattern.lastIndex });
+        itemRows.push({ id: genItemRowId(), desc: titleCase(desc || 'Serviço'), val: val.toString(), end: amountPattern.lastIndex });
       }
     }
   }
@@ -1910,7 +2137,7 @@ function parseVoiceTranscript(text) {
       const v = parseFloat(vm[1].replace(',', '.'));
       if (v > 0 && v < 100000) {
         const descLabel = (i === 0 && service) ? 'Instalação / Mão de Obra' : (i === 1 ? 'Materiais' : 'Item ' + (i + 1));
-        itemRows.push({ id: Date.now() + i, desc: descLabel, val: v.toString() });
+        itemRows.push({ id: genItemRowId(), desc: descLabel, val: v.toString() });
       }
     });
   }
