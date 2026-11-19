@@ -12,6 +12,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     tailwind.config = {
@@ -1122,13 +1123,12 @@ function getFormData() {
 function saveAndGeneratePDF() {
   const data = getFormData();
   if (!data.clienteNome) {
-    showToast('Informe o nome do cliente');
-    document.getElementById('f-nome').focus();
-    return;
+    data.clienteNome = 'Cliente';
   }
-  if (data.itens.length === 0 || data.total === 0) {
-    showToast('Adicione ao menos um item com valor');
-    return;
+  if (!data.itens || data.itens.length === 0) {
+    const sDesc = data.aparelho || 'Instalação / Manutenção de Ar-Condicionado';
+    data.itens = [{ desc: sDesc, val: data.total || 0 }];
+    data.items = [{ desc: sDesc, price: data.total || 0 }];
   }
 
   // Atualiza ou insere
@@ -1348,31 +1348,54 @@ function downloadPDF() {
 }
 
 function savePDFDocument(doc, fileName) {
-  // Tentativa direta com doc.save (método nativo oficial do jsPDF)
+  let saved = false;
+
+  // Tentativa 1: Método nativo doc.save
   try {
     doc.save(fileName);
-    showToast('PDF baixado com sucesso!');
-    return true;
+    saved = true;
   } catch(err1) {
-    console.warn('doc.save falhou, tentando fallback Blob:', err1);
+    console.warn('doc.save falhou:', err1);
+  }
+
+  // Tentativa 2: Blob direto via link âncora
+  if (!saved) {
     try {
       const blob = doc.output('blob');
       const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
       setTimeout(() => {
-        try { document.body.removeChild(link); } catch(e){}
-      }, 3000);
-      showToast('PDF baixado com sucesso!');
-      return true;
+        try { document.body.removeChild(a); } catch(e){}
+        URL.revokeObjectURL(blobUrl);
+      }, 5000);
+      saved = true;
     } catch(err2) {
-      console.error('Falha geral ao salvar PDF:', err2);
-      showToast('Erro ao baixar PDF: ' + err2.message);
-      return false;
+      console.warn('Fallback blob falhou:', err2);
     }
+  }
+
+  // Tentativa 3: Data URI para abrir diretamente
+  if (!saved) {
+    try {
+      const dataUri = doc.output('datauristring');
+      const w = window.open(dataUri, '_blank');
+      if (w) saved = true;
+    } catch(err3) {
+      console.warn('Fallback datauri falhou:', err3);
+    }
+  }
+
+  if (saved) {
+    showToast('PDF baixado com sucesso!');
+    return true;
+  } else {
+    showToast('Não foi possível fazer o download do PDF.');
+    return false;
   }
 }
 
