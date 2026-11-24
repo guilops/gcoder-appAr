@@ -71,8 +71,93 @@
 </head>
 <body class="h-full min-h-screen flex flex-col bg-slate-50">
 
+<!-- ===== MODAL / TELA DE LOGIN DEMO ===== -->
+<div id="demo-login-modal" class="fixed inset-0 z-[120] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col animate-fadeInUp">
+    <!-- Header do Login -->
+    <div class="bg-gradient-to-br from-brand-700 via-brand-600 to-teal-800 p-6 text-white text-center relative">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-xs mb-3 shadow-inner">
+        <i class="fa-solid fa-snowflake text-2xl text-white"></i>
+      </div>
+      <h2 class="text-xl font-extrabold tracking-tight">Ar no Preço Certo</h2>
+      <p class="text-xs text-brand-100 mt-1 font-medium">Ambiente de Demonstração Interativa</p>
+      
+      <div class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-200 border border-amber-300/30 text-[11px] font-bold">
+        <i class="fa-solid fa-flask"></i> VERSÃO DEMO
+      </div>
+    </div>
+
+    <!-- Corpo com Instrução e Form -->
+    <div class="p-5 space-y-4">
+      <!-- Card com credenciais de teste -->
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 space-y-1.5">
+        <p class="text-xs font-black text-amber-900 flex items-center gap-1.5">
+          <i class="fa-solid fa-key text-amber-600"></i> Credenciais de Acesso Demo:
+        </p>
+        <div class="text-xs text-amber-800 space-y-0.5 font-mono">
+          <p>Usuário: <span class="font-bold bg-white/80 px-1.5 py-0.5 rounded border border-amber-200 text-slate-800">teste</span></p>
+          <p>Senha: <span class="font-bold bg-white/80 px-1.5 py-0.5 rounded border border-amber-200 text-slate-800">teste@123</span></p>
+        </div>
+        <p class="text-[11px] text-amber-700 leading-tight pt-1">
+          Utilize essas credenciais para testar todas as funcionalidades do aplicativo!
+        </p>
+      </div>
+
+      <form onsubmit="handleDemoLogin(event)" class="space-y-3">
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Usuário</label>
+          <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100 transition">
+            <i class="fa-solid fa-user text-slate-400 text-sm"></i>
+            <input id="login-user" type="text" autocomplete="username" placeholder="Digite 'teste'" class="w-full text-sm bg-transparent outline-none text-slate-800 placeholder:text-slate-300">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Senha</label>
+          <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100 transition">
+            <i class="fa-solid fa-lock text-slate-400 text-sm"></i>
+            <input id="login-pass" type="password" autocomplete="current-password" placeholder="Digite 'teste@123'" class="w-full text-sm bg-transparent outline-none text-slate-800 placeholder:text-slate-300">
+          </div>
+        </div>
+
+        <div id="login-error-msg" class="hidden text-xs text-rose-600 font-semibold bg-rose-50 border border-rose-200 rounded-xl p-2.5 text-center">
+          Usuário ou senha incorretos! Use <b>teste</b> e <b>teste@123</b>.
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="autoPreencherLogin()" class="flex-1 py-2.5 px-3 rounded-xl border border-brand-200 text-brand-700 bg-brand-50/50 hover:bg-brand-50 text-xs font-bold transition">
+            Auto-preencher
+          </button>
+          <button type="submit" class="flex-1 py-2.5 px-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-extrabold shadow-md shadow-brand-600/30 transition active:scale-95 flex items-center justify-center gap-1.5">
+            Entrar na Demo <i class="fa-solid fa-arrow-right text-xs"></i>
+          </button>
+        </div>
+      </form>
+
+      <!-- Chamada para liberar Full -->
+      <div class="border-t border-slate-100 pt-3 text-center">
+        <p class="text-[11px] text-slate-500 mb-1">Deseja seu acesso completo e ilimitado?</p>
+        <button type="button" onclick="openViewFromLogin('licenca')" class="text-xs font-bold text-amber-600 hover:text-amber-700 inline-flex items-center gap-1">
+          <i class="fa-solid fa-crown text-amber-500"></i> Adquira a Licença Full por R$ 19,90 via Pix
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== APP ROOT ===================== -->
 <div id="app" class="flex flex-col min-h-screen max-w-lg mx-auto w-full relative bg-[#f8fafc] shadow-sm">
+
+  <!-- ===== BARRA SUPERIOR FIXA: AVISO MODO DEMO ===== -->
+  <div id="demo-top-bar" class="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 text-white px-3 py-1.5 text-[11px] font-bold flex items-center justify-between shadow-xs sticky top-0 z-40">
+    <div class="flex items-center gap-1.5 truncate">
+      <i class="fa-solid fa-flask text-amber-200"></i>
+      <span class="truncate">Modo Demonstração (PDF Mockado)</span>
+    </div>
+    <button onclick="openView('licenca')" class="bg-white text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow-xs hover:bg-amber-50 active:scale-95 transition shrink-0 flex items-center gap-1">
+      <i class="fa-solid fa-crown text-amber-600"></i> Liberar Full R$ 19,90
+    </button>
+  </div>
 
   <!-- ===== HEADER ===== -->
   <header class="bg-white px-4 pt-4 pb-3 flex items-center justify-between sticky top-0 z-30 border-b border-slate-100 shadow-sm">
@@ -162,6 +247,29 @@
             <p class="text-[11px] text-slate-400">Ver todos, aprovados e enviados</p>
           </div>
           <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+        </button>
+
+        <!-- Opção: Adquirir Licença Full -->
+        <button onclick="toggleSideMenu(); openView('licenca');" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-amber-50/70 hover:bg-amber-100/70 text-amber-900 border border-amber-200/70 font-semibold text-sm transition">
+          <div class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <i class="fa-solid fa-crown text-sm"></i>
+          </div>
+          <div class="text-left flex-1">
+            <p class="font-bold text-amber-950 text-sm flex items-center gap-1.5">Liberar Acesso Completo <span class="bg-amber-200 text-amber-800 text-[9px] px-1.5 py-0.2 rounded font-extrabold uppercase">R$ 19,90</span></p>
+            <p class="text-[11px] text-amber-700">Ativação instantânea via Pix</p>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-amber-400"></i>
+        </button>
+
+        <!-- Opção: Sair / Trocar Usuário -->
+        <button onclick="toggleSideMenu(); logoutDemo();" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl hover:bg-rose-50 text-slate-700 hover:text-rose-600 font-semibold text-sm transition">
+          <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </div>
+          <div class="text-left flex-1">
+            <p class="font-bold text-slate-700 text-sm">Sair da Demo</p>
+            <p class="text-[11px] text-slate-400">Voltar à tela de login</p>
+          </div>
         </button>
 
         <!-- Dica Profissional Box -->
@@ -451,6 +559,103 @@
       </button>
     </div>
 
+    <!-- ===== VIEW: ADQUIRIR LICENÇA FULL ===== -->
+    <div id="view-licenca" class="hidden p-4 space-y-4 fade-up">
+      <div class="flex items-center gap-3">
+        <button onclick="goBack()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 shadow-sm text-slate-600">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </button>
+        <div>
+          <h2 class="text-lg font-extrabold text-slate-800">Liberar Acesso Completo</h2>
+          <p class="text-xs text-slate-500">Desbloqueie PDF real, WhatsApp ilimitado e sem marca d'água</p>
+        </div>
+      </div>
+
+      <!-- Banner de Destaque -->
+      <div class="bg-gradient-to-br from-amber-500 via-amber-600 to-teal-700 text-white rounded-3xl p-5 shadow-lg relative overflow-hidden">
+        <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+        <div class="relative z-10 space-y-3">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-black uppercase tracking-wider backdrop-blur-xs">
+            <i class="fa-solid fa-crown text-amber-200"></i> Licença Vitalícia
+          </div>
+          <h3 class="text-2xl font-black leading-tight">Deixe de perder serviços por passar orçamento amador</h3>
+          <p class="text-xs text-amber-50 leading-relaxed">
+            Tenha seu próprio usuário e senha com acesso completo. Crie orçamentos em segundos por voz, gere PDFs timbrados impecáveis com sua logo e envie pelo WhatsApp.
+          </p>
+          <div class="pt-2 flex items-baseline gap-2">
+            <span class="text-xs text-amber-200 font-semibold">Valor promocional:</span>
+            <span class="text-3xl font-black text-white">R$ 19,90</span>
+            <span class="text-xs text-amber-200">/ pagamento único</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparativo Demo vs Full -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+        <p class="text-xs font-black uppercase tracking-wider text-slate-400">O que você ganha com o Acesso Completo:</p>
+        <ul class="space-y-2.5 text-xs text-slate-700 font-medium">
+          <li class="flex items-center gap-2.5">
+            <i class="fa-solid fa-circle-check text-emerald-500 text-sm shrink-0"></i>
+            <span><strong>PDF 100% real</strong> com seus itens, clientes e cálculo real sem marcas d'água de teste</span>
+          </li>
+          <li class="flex items-center gap-2.5">
+            <i class="fa-solid fa-circle-check text-emerald-500 text-sm shrink-0"></i>
+            <span><strong>Sua logomarca & dados cadastrais</strong> (CNPJ, telefone, chave Pix própria no cabeçalho)</span>
+          </li>
+          <li class="flex items-center gap-2.5">
+            <i class="fa-solid fa-circle-check text-emerald-500 text-sm shrink-0"></i>
+            <span><strong>Reconhecimento de voz inteligente</strong> para falar e o orçamento montar sozinho</span>
+          </li>
+          <li class="flex items-center gap-2.5">
+            <i class="fa-solid fa-circle-check text-emerald-500 text-sm shrink-0"></i>
+            <span><strong>Envio direto no WhatsApp</strong> formatado com 1 clique</span>
+          </li>
+          <li class="flex items-center gap-2.5">
+            <i class="fa-solid fa-circle-check text-emerald-500 text-sm shrink-0"></i>
+            <span><strong>Seu login e senha exclusivos</strong> para acessar de qualquer celular ou computador</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Pagamento via Pix -->
+      <div class="bg-emerald-50/70 border border-emerald-200 rounded-3xl p-5 space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+            <i class="fa-solid fa-qrcode"></i>
+          </div>
+          <div>
+            <p class="font-extrabold text-slate-800 text-sm">Pague via Pix para ativação imediata</p>
+            <p class="text-xs text-emerald-700">Valor fixo: <strong>R$ 19,90</strong></p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-3.5 border border-emerald-100 space-y-2">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Chave Pix (E-mail):</p>
+          <div class="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+            <span id="pix-chave-valor" class="text-xs sm:text-sm font-black text-slate-800 select-all font-mono">guilherme.glsantos@gmail.com</span>
+            <button onclick="copiarPixChave()" class="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95 shadow-xs">
+              <i class="fa-solid fa-copy"></i> Copiar
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white/80 rounded-2xl p-3.5 border border-emerald-100 text-xs text-slate-600 space-y-2 leading-relaxed">
+          <p class="font-bold text-slate-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-info text-emerald-600"></i> Como recebo meu acesso?
+          </p>
+          <p>
+            1. Faça a transferência Pix de <strong>R$ 19,90</strong> para a chave acima.<br>
+            2. Clique no botão verde abaixo e mande o comprovante no WhatsApp.<br>
+            3. Em poucos minutos você recebe seu <strong>usuário e senha Full</strong>!
+          </p>
+        </div>
+
+        <button onclick="enviarComprovantePix()" class="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition active:scale-95">
+          <i class="fa-brands fa-whatsapp text-lg"></i> Já fiz o Pix! Enviar comprovante
+        </button>
+      </div>
+    </div>
+
   </main>
 
   <!-- ===== FAB ===== -->
@@ -675,6 +880,22 @@
         </div>
       </div>
 
+      <!-- Chamada de Acesso Completo no Modal de Resultado -->
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-black text-amber-900 flex items-center gap-1.5">
+            <i class="fa-solid fa-crown text-amber-500"></i> Desbloquear PDF Real
+          </span>
+          <span class="text-[10px] bg-amber-200 text-amber-900 font-extrabold px-1.5 py-0.5 rounded">R$ 19,90</span>
+        </div>
+        <p class="text-[11px] text-amber-800 leading-tight">
+          Nesta demo, o PDF gerado possui dados e valores fixos de demonstração. Libere agora o acesso com PDF 100% real com sua logo e dados!
+        </p>
+        <button onclick="closeResultModal(); openView('licenca');" class="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs transition active:scale-95 flex items-center justify-center gap-1.5 shadow-xs">
+          <i class="fa-solid fa-qrcode"></i> Fazer Pix e Liberar Licença Full
+        </button>
+      </div>
+
       <!-- Ações de status -->
       <div class="flex gap-2">
         <button onclick="marcarAprovado()" id="btn-aprovar" class="flex-1 py-2.5 rounded-xl border-2 border-emerald-500 text-emerald-600 font-bold text-xs hover:bg-emerald-50 transition">
@@ -712,6 +933,7 @@
 'use strict';
 
 // ===================== STATE =====================
+let isDemoAuthenticated = false;
 let orcamentos = [];
 let perfil = {};
 let pagamento = {};
@@ -740,6 +962,7 @@ function maskPhone(el) {
 
 // ===================== INIT =====================
 function init() {
+  checkDemoAuth();
   loadData();
   renderAll();
   updateAvatar();
@@ -747,6 +970,76 @@ function init() {
   loadPerfilForm();
   loadPagamentoForm();
   initSpeechRecognition();
+}
+
+// ===================== DEMO AUTH & LICENÇA =====================
+function checkDemoAuth() {
+  const auth = sessionStorage.getItem('ar_demo_logged');
+  const modal = document.getElementById('demo-login-modal');
+  if (auth === 'true') {
+    isDemoAuthenticated = true;
+    if (modal) modal.classList.add('hidden');
+  } else {
+    isDemoAuthenticated = false;
+    if (modal) modal.classList.remove('hidden');
+  }
+}
+
+function handleDemoLogin(e) {
+  if (e) e.preventDefault();
+  const u = (document.getElementById('login-user').value || '').trim();
+  const p = (document.getElementById('login-pass').value || '').trim();
+  const errEl = document.getElementById('login-error-msg');
+
+  if (u.toLowerCase() === 'teste' && p === 'teste@123') {
+    if (errEl) errEl.classList.add('hidden');
+    sessionStorage.setItem('ar_demo_logged', 'true');
+    isDemoAuthenticated = true;
+    document.getElementById('demo-login-modal').classList.add('hidden');
+    showToast('Login efetuado! Bem-vindo à versão de demonstração.');
+  } else {
+    if (errEl) errEl.classList.remove('hidden');
+  }
+}
+
+function autoPreencherLogin() {
+  document.getElementById('login-user').value = 'teste';
+  document.getElementById('login-pass').value = 'teste@123';
+  const errEl = document.getElementById('login-error-msg');
+  if (errEl) errEl.classList.add('hidden');
+}
+
+function logoutDemo() {
+  sessionStorage.removeItem('ar_demo_logged');
+  isDemoAuthenticated = false;
+  const modal = document.getElementById('demo-login-modal');
+  if (modal) modal.classList.remove('hidden');
+  showToast('Sessão demo encerrada.');
+}
+
+function openViewFromLogin(viewName) {
+  document.getElementById('demo-login-modal').classList.add('hidden');
+  openView(viewName);
+}
+
+function copiarPixChave() {
+  const chave = 'guilherme.glsantos@gmail.com';
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(chave).then(() => {
+      showToast('Chave Pix copiada com sucesso!');
+    }).catch(() => {
+      prompt('Copie a chave Pix:', chave);
+    });
+  } else {
+    prompt('Copie a chave Pix:', chave);
+  }
+}
+
+function enviarComprovantePix() {
+  const telefone = '5511999999999'; // número padrão ou mensagem direta
+  const msg = 'Olá Guilherme! Fiz o Pix de R$ 19,90 referente à licença do App Ar no Preço Certo. Segue meu comprovante em anexo para liberação do meu usuário e senha Full!';
+  const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  window.open(url, '_blank');
 }
 
 function loadData() {
@@ -768,7 +1061,7 @@ function saveData() {
 function openView(v) {
   previousView = currentView;
   currentView = v;
-  ['orcamentos','meus-dados','pagamento','servicos'].forEach(id => {
+  ['orcamentos','meus-dados','pagamento','servicos','licenca'].forEach(id => {
     const el = document.getElementById('view-' + id);
     if (el) el.classList.add('hidden');
   });
@@ -1644,52 +1937,31 @@ function generatePDF(quote) {
     const contentWidth = pageWidth - margin * 2;
 
     const addHeader = () => {
-      // Faixa Superior: Verde Petróleo Profundo
+    // Faixa Superior: Verde Petróleo Profundo
+    const addHeader = () => {
       doc.setFillColor(15, 118, 110);
       doc.rect(0, 0, pageWidth, 36, 'F');
 
-      // Logo ou iniciais
-      const initials = cleanPDF(getInitials(perfil.nome || 'AR'));
-      let hasLogo = false;
-      if (perfil.logo && typeof perfil.logo === 'string' && perfil.logo.startsWith('data:image/')) {
-        try {
-          let format = 'JPEG';
-          if (perfil.logo.includes('image/png')) format = 'PNG';
-          else if (perfil.logo.includes('image/jpeg') || perfil.logo.includes('image/jpg')) format = 'JPEG';
-          doc.addImage(perfil.logo, format, margin, 7, 22, 22);
-          hasLogo = true;
-        } catch(e) {
-          console.warn('Logo ignorada no PDF:', e);
-          hasLogo = false;
-        }
-      }
+      // Logo ou iniciais fixa de demonstração
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(margin, 7, 22, 22, 3, 3, 'F');
+      doc.setTextColor(15, 118, 110);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.text('DEMO', margin + 11, 21, { align: 'center' });
 
-      if (!hasLogo) {
-        doc.setFillColor(255, 255, 255);
-        doc.roundedRect(margin, 7, 22, 22, 3, 3, 'F');
-        doc.setTextColor(15, 118, 110);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14);
-        doc.text(initials, margin + 11, 21, { align: 'center' });
-      }
-
-      // Nome da empresa ou técnico
+      // Nome da empresa ou técnico mockado
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      const nomeEmpresa = cleanPDF(perfil.empresa || perfil.nome || 'AR NO PRECO CERTO');
-      doc.text(nomeEmpresa, margin + 27, 16);
+      doc.setFontSize(13);
+      doc.text('CLIMATIZACAO PROFISSIONAL (EXEMPLO DEMO)', margin + 27, 16);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.5);
-      const cnpjStr = perfil.cnpj ? (perfil.cnpj.length > 14 ? 'CNPJ: ' : 'CPF: ') + cleanPDF(perfil.cnpj) : null;
-      const subTec = [perfil.nome && perfil.empresa ? cleanPDF(perfil.nome) : null, cnpjStr, cleanPDF(perfil.whatsapp), cleanPDF(perfil.cidade)].filter(Boolean).join('  -  ');
-      if (subTec) doc.text(subTec, margin + 27, 23);
-
-      const idStr = cleanPDF(String(quote.id || 'ORC-001'));
-      const dataStr = cleanPDF(quote.date || (quote.criadoEm ? formatDate(quote.criadoEm) : new Date().toLocaleDateString('pt-BR')));
       doc.setFontSize(8);
-      doc.text(`ORCAMENTO: ${idStr}   -   ${dataStr}`, margin + 27, 29);
+      doc.text('CNPJ: 00.000.000/0001-99  -  (11) 99999-9999  -  Sao Paulo - SP', margin + 27, 23);
+
+      doc.setFontSize(7.5);
+      doc.text('MODELO DEMONSTRATIVO  -  LIBERE O ACESSO COMPLETO POR APENAS R$ 19,90', margin + 27, 29);
       doc.setTextColor(30, 41, 59);
     };
 
@@ -1739,14 +2011,12 @@ function generatePDF(quote) {
     };
     drawTableHeader();
 
-    const items = (quote.itens || quote.items || []).map(i => ({
-      desc: cleanPDF(i.desc || 'Item'),
-      price: Number((i.val !== undefined ? i.val : i.price) || 0)
-    }));
-
-    if (items.length === 0) {
-      items.push({ desc: 'Servico de Ar-Condicionado', price: Number(quote.total || 0) });
-    }
+    // Itens da Proposta (Fixos e Mockados para a versão Demo)
+    const items = [
+      { desc: '[EXEMPLO DEMO] Instalacao Padrao Split 9.000 a 12.000 BTUs', price: 450.00 },
+      { desc: '[EXEMPLO DEMO] Tubulacao de cobre e isolamento termico ate 3 metros', price: 180.00 },
+      { desc: '[EXEMPLO DEMO] Carga de fluido refrigerante e teste de estanqueidade', price: 120.00 }
+    ];
 
     items.forEach(item => {
       const lines = doc.splitTextToSize(item.desc, contentWidth - 45);
@@ -1769,59 +2039,74 @@ function generatePDF(quote) {
     doc.setTextColor(15, 118, 110);
     doc.setFontSize(11);
     doc.text('TOTAL DO ORCAMENTO:', margin + 5, y + 9);
-    const totalVal = quote.total !== undefined ? quote.total : items.reduce((s, it) => s + it.price, 0);
+    const totalVal = 750.00; // Total fixo mockado de demonstração
     doc.text(formatPDFMoney(totalVal), pageWidth - margin - 5, y + 9, { align: 'right' });
     y += 18;
 
-    // Condições de pagamento
-    const hasPag = pagamento && (pagamento.pixChave || pagamento.parcelas || pagamento.garantia || pagamento.validade);
-    if (hasPag) {
-      const pagLines = [];
-      if (pagamento.pixChave) {
-        pagLines.push('Chave Pix: ' + cleanPDF(pagamento.pixChave) + (pagamento.pixTipo ? ' (' + cleanPDF(pagamento.pixTipo).toUpperCase() + ')' : ''));
-      }
-      if (pagamento.parcelas) {
-        const ac = pagamento.acrescimo ? ' (+' + pagamento.acrescimo + '% no cartao)' : ' sem juros';
-        pagLines.push('Cartao de Credito: Parcela em ate ' + pagamento.parcelas + 'x' + ac);
-      }
-      if (pagamento.garantia) pagLines.push('Garantia: ' + cleanPDF(pagamento.garantia));
-      if (pagamento.validade) pagLines.push('Validade da proposta: ' + pagamento.validade + ' dias');
+    // Condições de pagamento fixas demonstrativas
+    const pagLines = [
+      'Chave Pix: guilherme.glsantos@gmail.com (E-mail)',
+      'Cartao de Credito: Parcela em ate 12x sem juros',
+      'Garantia: 90 dias de garantia com nota e termo de instalacao',
+      'Validade da proposta: 10 dias'
+    ];
 
-      const boxH = pagLines.length * 5.5 + 9;
-      if (y + boxH > pageHeight - 22) { doc.addPage(); addHeader(); y = 48; }
-      doc.setFillColor(248, 250, 252);
-      doc.roundedRect(margin, y, contentWidth, boxH, 2, 2, 'F');
-      doc.setFontSize(8.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(15, 118, 110);
-      doc.text('CONDICOES DE PAGAMENTO E GARANTIA', margin + 4, y + 5.5);
-      y += 8;
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(51, 65, 85);
-      doc.setFontSize(8);
-      pagLines.forEach(l => {
-        doc.text('- ' + l, margin + 4, y);
-        y += 5.2;
-      });
-      y += 5;
-    }
+    const boxH = pagLines.length * 5.5 + 9;
+    if (y + boxH > pageHeight - 45) { doc.addPage(); addHeader(); y = 48; }
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(margin, y, contentWidth, boxH, 2, 2, 'F');
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 118, 110);
+    doc.text('CONDICOES DE PAGAMENTO E GARANTIA (MOCK DEMO)', margin + 4, y + 5.5);
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.setFontSize(8);
+    pagLines.forEach(l => {
+      doc.text('- ' + l, margin + 4, y);
+      y += 5.2;
+    });
+    y += 8;
 
-    // Rodapé em todas as páginas
+    // Box Chamada para Acesso Completo no PDF (gostinho de quero mais)
+    if (y + 22 > pageHeight - 20) { doc.addPage(); addHeader(); y = 48; }
+    doc.setFillColor(254, 243, 199);
+    doc.roundedRect(margin, y, contentWidth, 20, 2, 2, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(180, 83, 9);
+    doc.text('GOSTOU DO MODELO? LIBERE O SEU USUARIO FULL POR APENAS R$ 19,90!', margin + 4, y + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(146, 64, 14);
+    doc.text('Faca um Pix de R$ 19,90 para a chave: guilherme.glsantos@gmail.com e receba seu acesso', margin + 4, y + 11.5);
+    doc.text('completo vitalicio para criar orcamentos reais ilimitados com sua propria logo e dados!', margin + 4, y + 16.5);
+    y += 24;
+
+    // Rodapé em todas as páginas com carimbo DEMONSTRAÇÃO
     const pages = doc.getNumberOfPages();
     for (let page = 1; page <= pages; page++) {
       doc.setPage(page);
+
+      // Carimbo d'água transversal DEMONSTRAÇÃO
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(40);
+      doc.setTextColor(240, 240, 240);
+      doc.text('VERSAO DEMO', pageWidth / 2, pageHeight / 2, { align: 'center', angle: 45 });
+
       doc.setDrawColor(226, 232, 240);
       doc.line(margin, pageHeight - 14, pageWidth - margin, pageHeight - 14);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(148, 163, 184);
-      doc.text('Ar no Preco Certo - Orcamento profissional de servicos de climatizacao', margin, pageHeight - 9);
+      doc.text('Ar no Preco Certo - MODELO DE DEMONSTRACAO (PDF MOCKADO)', margin, pageHeight - 9);
       doc.text(`${page} / ${pages}`, pageWidth - margin, pageHeight - 9, { align: 'right' });
     }
 
-    const safeName = cleanPDF(clientName).replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 35) || 'Cliente';
-    const safeId = cleanPDF(quote.id || '01').replace(/[^a-zA-Z0-9_-]+/g, '_');
-    const fileName = `Orcamento_${safeName}_${safeId}.pdf`;
+    const safeName = 'Demonstracao';
+    const safeId = 'DEMO_01';
+    const fileName = `Orcamento_DEMO_${safeName}_${safeId}.pdf`;
 
     savePDFDocument(doc, fileName);
   } catch(e) {
