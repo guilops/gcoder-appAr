@@ -1821,24 +1821,31 @@ function sendWhatsApp() {
   const o = currentOrcamento;
   const nome = o.clienteNome || o.clientName || 'Cliente';
   const telefone = digits(o.clienteTelefone || o.clientPhone || '');
-  let msg = `Olá ${nome}! 😊\n\nSegue o orçamento de ar-condicionado:\n\n`;
-  msg += `🔧 *Aparelho/Serviço:* ${o.aparelho || o.serviceDesc || '—'}\n\n`;
-  msg += `📋 *Itens:*\n`;
+
+  // Mensagem adaptada para Modo Demonstração
+  let msg = `*DEMONSTRAÇÃO DE ENVIO DE ORÇAMENTO VIA WHATSAPP*\n`;
+  msg += `_(Aplicativo Ar no Preço Certo - Modo Teste)_\n\n`;
+  msg += `Olá ${nome}! 😊\n`;
+  msg += `Este é um modelo demonstrativo de como o seu cliente receberá o orçamento:\n\n`;
+  msg += `🔧 *Aparelho/Serviço:* ${o.aparelho || o.serviceDesc || 'Instalação / Manutenção de Ar'}\n\n`;
+  msg += `📋 *Itens / Serviços:*\n`;
   const items = o.itens || o.items || [];
   items.forEach(it => {
     const val = it.val !== undefined ? it.val : it.price;
     msg += `  • ${it.desc}: ${formatBRL(val)}\n`;
   });
   msg += `\n💰 *Total: ${formatBRL(o.total)}*\n`;
-  if (pagamento.pixChave) msg += `\n💳 Pix: ${pagamento.pixChave}`;
-  if (pagamento.parcelas) msg += `\n💳 Cartão: até ${pagamento.parcelas}x`;
-  if (pagamento.garantia) msg += `\n🛡️ ${pagamento.garantia}`;
-  if (pagamento.validade) msg += `\n📅 Válido por ${pagamento.validade} dias`;
-  msg += `\n\nQualquer dúvida, estou à disposição! 👍`;
+  if (pagamento.pixChave) msg += `\n💳 Chave Pix: ${pagamento.pixChave}`;
+  if (pagamento.parcelas) msg += `\n💳 Cartão de Crédito: até ${pagamento.parcelas}x`;
+  if (pagamento.garantia) msg += `\n🛡️ Garantia: ${pagamento.garantia}`;
+  if (pagamento.validade) msg += `\n📅 Validade: ${pagamento.validade} dias`;
+  msg += `\n\n------------------------------\n`;
+  msg += `🚀 *PARA LIBERAR A VERSÃO COMPLETA E ILIMITADA:*\n`;
+  msg += `Adquira a licença Full vitalícia por apenas *R$ 19,90 via Pix* para: *guilherme.glsantos@gmail.com*`;
 
   const url = 'https://wa.me/' + (telefone ? '55' + telefone : '') + '?text=' + encodeURIComponent(msg);
   window.open(url, '_blank');
-  showToast('Status atualizado para Enviado!');
+  showToast('Demonstração enviada ao WhatsApp!');
 }
 
 function sendWhatsAppFor(id) {
@@ -2171,6 +2178,7 @@ function generatePDF(quote) {
 let recognition = null;
 let isListening = false;
 let voiceTranscript = '';
+let hasCapturedAudio = false;
 
 function initSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2198,6 +2206,7 @@ function initSpeechRecognition() {
         fullText += ' ' + event.results[i][0].transcript;
       }
       voiceTranscript = fullText.replace(/\s+/g, ' ').trim();
+      if (voiceTranscript) hasCapturedAudio = true;
 
       const status = document.getElementById('modal-voice-status');
       if (status && voiceTranscript) {
@@ -2211,16 +2220,13 @@ function initSpeechRecognition() {
       if (event.error === 'not-allowed') {
         showToast('Permita o acesso ao microfone nas configurações do navegador.');
         stopVoice();
-      } else if (event.error === 'no-speech') {
-        // Silêncio momentâneo na fala, não interrompe
       }
     };
 
     recognition.onend = function() {
-      const transcript = voiceTranscript.trim();
-      stopVoice();
-      if (transcript) {
-        parseVoiceTranscript(transcript);
+      if (isListening) {
+        // Se o navegador encerrou sozinho por silêncio
+        finishVoice();
       }
     };
 
@@ -2241,17 +2247,17 @@ function toggleVoice() {
 
 function startVoice() {
   voiceTranscript = '';
+  hasCapturedAudio = false;
   isListening = true;
   updateVoiceUI(true);
 
   const status = document.getElementById('modal-voice-status');
-  if (status) status.textContent = '🎤 Microfone ativo... Fale o cliente, serviço e valores!';
+  if (status) status.textContent = '🎤 Microfone ativo... Pode falar cliente, serviço e valores!';
 
-  // Reinicializa a instância para garantir que o microfone capture fresh áudio sempre
   const rec = initSpeechRecognition();
   if (!rec) {
     stopVoice();
-    showToast('Reconhecimento de voz não suportado neste dispositivo/navegador.');
+    showToast('Reconhecimento de voz não suportado neste navegador.');
     return;
   }
 
@@ -2275,12 +2281,13 @@ function stopVoice() {
   isListening = false;
   if (recognition) {
     try { recognition.abort(); } catch(e){}
+    recognition = null;
   }
   updateVoiceUI(false);
 }
 
 function finishVoice() {
-  if (!isListening) return;
+  if (!isListening && !hasCapturedAudio) return;
   isListening = false;
 
   const text = document.getElementById('single-mic-text');
@@ -2291,25 +2298,17 @@ function finishVoice() {
   const transcript = voiceTranscript.trim();
 
   if (recognition) {
-    try { recognition.stop(); } catch(e){}
+    try { recognition.abort(); } catch(e){}
+    recognition = null;
   }
 
+  updateVoiceUI(false);
+
   if (transcript) {
-    setTimeout(() => {
-      updateVoiceUI(false);
-      parseVoiceTranscript(transcript);
-    }, 150);
+    parseVoiceTranscript(transcript);
   } else {
-    setTimeout(() => {
-      updateVoiceUI(false);
-      const lateTranscript = voiceTranscript.trim();
-      if (lateTranscript) {
-        parseVoiceTranscript(lateTranscript);
-      } else {
-        showToast('Nenhum áudio detectado. Fale mais perto do microfone e tente de novo.');
-        if (status) status.textContent = 'Toque no botão para gravar por voz.';
-      }
-    }, 600);
+    showToast('Nenhum áudio detectado. Fale mais perto do microfone e tente de novo.');
+    if (status) status.textContent = 'Toque no botão para gravar por voz.';
   }
 }
 
@@ -2339,7 +2338,7 @@ function parseVoiceTranscript(text) {
   const original = text.trim();
   if (!original) return;
 
-  // Limpa campos anteriores para colocar apenas os dados do novo áudio
+  // 1. Limpeza total de qualquer resíduo anterior
   document.getElementById('f-nome').value = '';
   document.getElementById('f-telefone').value = '';
   document.getElementById('f-endereco').value = '';
@@ -2348,89 +2347,69 @@ function parseVoiceTranscript(text) {
 
   const normalized = original.normalize('NFD').replace(/\p{M}/gu, '');
 
-  const markers = [
-    /\b(?:orcamento\s+(?:para\s+)?(?:o\s+|a\s+)?(?:cliente\s+)?|meu\s+nome\s+(?:e|eh)\s*|me\s+chamo\s*|nome(?:\s+do\s+cliente)?(?:\s+(?:e|eh))?\s*|(?:o\s+|a\s+)?cliente(?:\s+(?:e|eh))?\s*)\s*[:, -]?/i,
-    /\b(?:telefone|celular|whatsapp|whats|numero)\s*(?:e|eh|:)?\s*/i,
-    /\b(?:endereco|local(?:\s+da\s+instalacao)?|rua|avenida|av\.)\s*(?:e|eh|:)?\s*/i,
-    /\b(?:descricao(?:\s+do\s+servico|\s+do\s+aparelho)?|servico|aparelho|instalacao\s+de|ar\s+condicionado|split|inverter)\s*(?:e|eh|:)?\s*/i,
-    /\b(?:materiais?|material|itens?|pecas?|mao(?:\s*de)?\s*obra)\s*[:, -]?/i
-  ];
-
-  function nextMarkerIndex(from) {
-    let end = normalized.length;
-    for (const marker of markers) {
-      const search = new RegExp(marker.source, 'ig');
-      search.lastIndex = from;
-      const found = search.exec(normalized);
-      if (found && found.index > from && found.index < end) end = found.index;
-    }
-    return end;
-  }
-
-  function section(marker, excludedMarkers) {
-    const match = marker.exec(normalized);
-    if (!match) return '';
-    const from = match.index + match[0].length;
-    let to = normalized.length;
-    for (const stop of excludedMarkers) {
-      const search = new RegExp(stop.source, 'ig');
-      search.lastIndex = from;
-      const found = search.exec(normalized);
-      if (found && found.index < to) to = found.index;
-    }
-    return original.slice(from, to).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
-  }
-
-  const nameMarker = /\b(?:orcamento\s+(?:para\s+)?(?:o\s+|a\s+)?(?:cliente\s+)?|meu\s+nome\s+(?:e|eh)\s*|me\s+chamo\s*|nome(?:\s+do\s+cliente)?(?:\s+(?:e|eh))?\s*|(?:o\s+|a\s+)?cliente(?:\s+(?:e|eh))?\s*)\s*[:, -]?/i;
-  const phoneMarker = /\b(?:telefone|celular|whatsapp|whats|numero)\s*(?:e|eh|:)?\s*/i;
-  const addressMarker = /\b(?:endereco|local(?:\s+da\s+instalacao)?|rua|avenida|av\.)\s*(?:e|eh|:)?\s*/i;
-  const serviceMarker = /\b(?:descricao(?:\s+do\s+servico|\s+do\s+aparelho)?|servico|aparelho|instalacao\s+de|ar\s+condicionado|split|inverter)\s*(?:e|eh|:)?\s*/i;
-  const itemMarker = /\b(?:materiais?|material|itens?|pecas?|mao(?:\s*de)?\s*obra)\s*[:, -]?/i;
-
-  let clientName = section(nameMarker, [phoneMarker, addressMarker, serviceMarker, itemMarker]);
-  if (!clientName) {
-    const firstStop = nextMarkerIndex(0);
-    clientName = original.slice(0, firstStop).replace(/^.*?\borcamento\s+(?:para\s+)?/i, '').replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
-  }
-  // Remove resíduos de gatilho do nome
-  clientName = clientName.replace(/^(?:(?:orcamento\s+(?:para\s+)?)|(?:o\s+|a\s+)?(?:cliente\s*(?:e|eh|:)?)|(?:nome(?:\s*do\s*cliente)?\s*(?:e|eh|:)?))\s*/i, '').trim();
-
-  // Extração inteligente de telefone com suporte a palavras faladas
-  const phoneText = section(phoneMarker, [addressMarker, serviceMarker, itemMarker]);
-  let rawPhone = phoneText;
-  if (!rawPhone) {
+  // 2. Extração Segura de Telefone / WhatsApp
+  let phoneDigits = '';
+  // Procura padrão como "telefone 11 98888 7777" ou palavras como "nove oito um dois..."
+  const phoneSectionMatch = normalized.match(/(?:telefone|celular|whatsapp|whats|contato|fone)\s*(?:e|eh|:)?\s*([a-z0-9\s().-]{7,30})/i);
+  let rawPhoneCandidate = phoneSectionMatch ? phoneSectionMatch[1] : '';
+  if (!rawPhoneCandidate) {
     const directPhoneMatch = normalized.match(/(?:\(?\b\d{2}\)?\s*)?(?:9\s*)?\d{4}[-\s]?\d{4}/);
-    if (directPhoneMatch) rawPhone = directPhoneMatch[0];
+    if (directPhoneMatch) rawPhoneCandidate = directPhoneMatch[0];
   }
 
   const phoneWordMap = {
     zero: '0', um: '1', uma: '1', dois: '2', duas: '2', tres: '3', quatro: '4', cinco: '5',
     seis: '6', meia: '6', sete: '7', oito: '8', nove: '9'
   };
-  let phoneDigits = '';
-  if (rawPhone) {
-    let cleanPhoneStr = rawPhone.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
+
+  if (rawPhoneCandidate) {
+    let cleanPhoneStr = rawPhoneCandidate.toLowerCase();
     for (const [w, d] of Object.entries(phoneWordMap)) {
       cleanPhoneStr = cleanPhoneStr.replace(new RegExp('\\b' + w + '\\b', 'g'), d);
     }
-    phoneDigits = cleanPhoneStr.replace(/\D/g, '').slice(0, 11);
+    const digitsOnly = cleanPhoneStr.replace(/\D/g, '');
+    if (digitsOnly.length >= 8) {
+      phoneDigits = digitsOnly.slice(0, 11);
+    }
   }
 
-  const address = section(addressMarker, [phoneMarker, serviceMarker, itemMarker]);
-
-  let service = section(serviceMarker, [phoneMarker, addressMarker, itemMarker]);
-  service = service.replace(/^(?:(?:descricao(?:\s+do\s+servico|\s+do\s+aparelho)?|servico|aparelho|de|do|da|e|eh|o|a)\s*[:\-]?\s*)+/i, '').trim();
-
-  if (!service) {
-    const serviceStart = normalized.search(/\b(?:ar\s+condicionado|split|inverter|higienizacao|limpeza|manutencao|carga\s+de\s+gas)\b/i);
-    if (serviceStart >= 0) service = original.slice(serviceStart, nextMarkerIndex(serviceStart)).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
+  // 3. Extração de Nome
+  let clientName = '';
+  const nameMatch = normalized.match(/(?:orcamento\s+(?:para\s+)?(?:o\s+|a\s+)?(?:cliente\s+)?|cliente\s+(?:e|eh|se\s+chama)?|nome\s+(?:do\s+cliente\s+)?(?:e|eh)?)\s*([a-z\s]+?)(?=\s+(?:telefone|celular|whatsapp|whats|endereco|rua|avenida|servico|aparelho|mao|material|valor)|$)/i);
+  if (nameMatch && nameMatch[1]) {
+    clientName = nameMatch[1].trim();
+  } else {
+    // Tenta pegar o começo antes das palavras-chave
+    const firstStopMatch = normalized.match(/^([a-z\s]+?)(?=\s+(?:telefone|celular|whatsapp|whats|endereco|rua|avenida|servico|aparelho|instalacao|split|ar\s+condicionado|mao|material|valor)|$)/i);
+    if (firstStopMatch && firstStopMatch[1]) {
+      clientName = firstStopMatch[1].replace(/^(?:orcamento\s+(?:para\s+)?|cliente\s+)/i, '').trim();
+    }
   }
-  const firstServiceMarker = serviceMarker.exec(normalized);
-  if (firstServiceMarker && /^instalacao\s+de/i.test(firstServiceMarker[0]) && !/^instalacao/i.test(service)) {
-    service = 'Instalação de ' + service;
+  // Remove termos parasitas
+  clientName = clientName.replace(/^(?:de|do|da|o|a|e|eh)\s+/i, '').trim();
+
+  // 4. Extração de Endereço
+  let address = '';
+  const addressMatch = normalized.match(/(?:endereco|local(?:\s+da\s+instalacao)?|rua|avenida|av\.?)\s*(?:e|eh|:)?\s*([a-z0-9\s,.-]+?)(?=\s+(?:telefone|celular|whatsapp|servico|aparelho|split|ar\s+condicionado|mao|material|valor)|$)/i);
+  if (addressMatch && addressMatch[1]) {
+    address = addressMatch[1].trim();
   }
 
-  // Conversão de números falados por extenso ou dígitos
+  // 5. Extração de Aparelho / Serviço
+  let service = '';
+  const serviceMatch = normalized.match(/(?:servico|aparelho|descricao(?:\s+do\s+servico)?)\s*(?:e|eh|:)?\s*([a-z0-9\s,.-]+?)(?=\s+(?:mao|material|materiais|pecas|valor|preco|total)|$)/i);
+  if (serviceMatch && serviceMatch[1]) {
+    service = serviceMatch[1].trim();
+  } else {
+    const directSvc = normalized.match(/\b(?:instalacao\s+de\s+[a-z0-9\s]+|split\s+[a-z0-9\s]+|ar\s+condicionado\s+[a-z0-9\s]+|higienizacao\s+[a-z0-9\s]+|manutencao\s+[a-z0-9\s]+|carga\s+de\s+gas)/i);
+    if (directSvc) {
+      service = directSvc[0].trim();
+    }
+  }
+  // Higieniza termos de gatilho
+  service = service.replace(/^(?:descricao\s*(?:do\s+servico)?|servico|aparelho|de|do|da|e|eh)\s*[:\-]?\s*/i, '').trim();
+
+  // 6. Conversão de Números Falados
   function spokenNumber(value) {
     if (!value) return 0;
     const dig = value.match(/\d+(?:[.,]\d+)?/);
@@ -2450,13 +2429,10 @@ function parseVoiceTranscript(text) {
     return total + group;
   }
 
-  // Lista de palavras numéricas ordenada por tamanho decrescente para não cortar prefixos
   const numWordsList = ['quatrocentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos', 'quinhentos', 'trezentos', 'dezesseis', 'dezessete', 'cinquenta', 'duzentos', 'quatorze', 'dezenove', 'quarenta', 'sessenta', 'catorze', 'dezoito', 'setenta', 'oitenta', 'noventa', 'trinta', 'quinze', 'quatro', 'vinte', 'treze', 'cento', 'cinco', 'onze', 'doze', 'zero', 'dois', 'duas', 'tres', 'seis', 'sete', 'oito', 'nove', 'cem', 'mil', 'uma', 'dez', 'um'];
   const numRegexStr = '(\\d+(?:[.,]\\d+)?|\\b(?:' + numWordsList.join('|') + ')\\b(?:\\s+(?:e\\s+)?\\b(?:' + numWordsList.join('|') + ')\\b)*)';
 
-  // Mão de Obra e Materiais
-  itemRows = [];
-
+  // 7. Extração de Mão de Obra e Materiais
   const maoObraRegex = new RegExp('mao(?:\\s*de)?\\s*obra\\s*(?:e|eh|por|de|no valor de|custa|fica)?\\s*' + numRegexStr + '\\s*(?:reais?|r\\$)?', 'i');
   const maoObraMatch = normalized.match(maoObraRegex);
   if (maoObraMatch) {
@@ -2471,58 +2447,47 @@ function parseVoiceTranscript(text) {
     if (val > 0) itemRows.push({ id: genItemRowId(), desc: 'Materiais', val: val.toString() });
   }
 
-  // Fallback: busca por itens genéricos com valores
+  // Fallback: se nenhum item de mão de obra ou material foi especificado, busca valores no texto
   if (itemRows.length === 0) {
-    const amountPattern = /(?:r$s*)?(d+(?:[.,]d{1,2})?)s*(?:reais?|r$)/gi;
-    let itemStart = normalized.search(itemMarker);
-    if (itemStart < 0) {
-      const _svcM = new RegExp(serviceMarker.source, 'i').exec(normalized);
-      if (_svcM) itemStart = _svcM.index + _svcM[0].length;
-    }
-
-    let amount;
-    amountPattern.lastIndex = 0;
-    while ((amount = amountPattern.exec(normalized)) !== null) {
-      if (itemStart < 0 || amount.index < itemStart) continue;
-      const from = Math.max(itemStart, itemRows.length ? itemRows[itemRows.length - 1].end || itemStart : itemStart);
-      let desc = original.slice(from, amount.index)
-        .replace(/^[\s,:;-]+|[\s,:;-]+$/g, '')
-        .replace(/^(?:(?:e|tambem|material|materiais|item|itens|pecas|descricao|servico|aparelho)s*:?s*)+/i, '')
-        .replace(/\s+(?:por|a|no valor de)$/i, '')
-        .trim();
-      const val = spokenNumber(amount[1]);
-      if (val > 0) {
-        itemRows.push({ id: genItemRowId(), desc: titleCase(desc || 'Serviço'), val: val.toString(), end: amountPattern.lastIndex });
-      }
+    const valMatches = [...normalized.matchAll(new RegExp('(?:valor|total|fica|custa|por)\\s*' + numRegexStr, 'gi'))];
+    if (valMatches.length > 0) {
+      valMatches.forEach((vm, i) => {
+        const v = spokenNumber(vm[1]);
+        if (v > 0) {
+          const desc = i === 0 ? (service || 'Instalação / Mão de Obra') : 'Materiais';
+          itemRows.push({ id: genItemRowId(), desc: titleCase(desc), val: v.toString() });
+        }
+      });
     }
   }
 
-  // Fallback se nenhum item tiver sido adicionado mas tiver números no texto
+  // Se ainda estiver vazio, procura qualquer número que represente valor em Reais
   if (itemRows.length === 0) {
-    const anyVals = [...original.matchAll(/(?:R\$\s*)?(\d+(?:[.,]\d+)?)\s*(?:reais?|,00)?/gi)];
-    anyVals.forEach((vm, i) => {
+    const anyNumMatch = [...normalized.matchAll(/(\d+(?:[.,]\d+)?)\s*(?:reais|r\$)/gi)];
+    anyNumMatch.forEach((vm, i) => {
       const v = parseFloat(vm[1].replace(',', '.'));
       if (v > 0 && v < 100000) {
-        const descLabel = (i === 0 && service) ? 'Instalação / Mão de Obra' : (i === 1 ? 'Materiais' : 'Item ' + (i + 1));
-        itemRows.push({ id: genItemRowId(), desc: descLabel, val: v.toString() });
+        const desc = i === 0 ? (service || 'Mão de Obra') : 'Materiais';
+        itemRows.push({ id: genItemRowId(), desc: titleCase(desc), val: v.toString() });
       }
     });
   }
 
-  if (itemRows.length === 0) addItemRow();
+  // Garante pelo menos 1 linha
+  if (itemRows.length === 0) {
+    addItemRow(service || 'Instalação / Manutenção de Ar', '');
+  }
 
-  // Preencher os campos
+  // 8. Preenche na interface
   if (clientName) document.getElementById('f-nome').value = titleCase(clientName);
   if (phoneDigits) {
     document.getElementById('f-telefone').value = formatPhoneString(phoneDigits);
-  } else if (phoneText) {
-    document.getElementById('f-telefone').value = formatPhoneString(phoneText);
   }
   if (address) document.getElementById('f-endereco').value = titleCase(address);
   if (service) document.getElementById('f-aparelho').value = titleCase(service);
 
   renderItemRows();
-  showToast('Orçamento preenchido com sucesso!');
+  showToast('Orçamento preenchido por voz com sucesso!');
 
   const status = document.getElementById('modal-voice-status');
   if (status) status.textContent = '✅ Campos preenchidos! Confira e toque em Salvar e Gerar PDF.';
