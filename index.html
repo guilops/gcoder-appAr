@@ -37,6 +37,7 @@
   </script>
   <style>
     * { box-sizing: border-box; }
+    html, body { overflow-x: hidden; width: 100%; max-width: 100vw; }
     body { font-family: 'Inter', system-ui, sans-serif; background: #f8fafc; -webkit-tap-highlight-color: transparent; color: #1e293b; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -631,10 +632,10 @@
 
         <div class="bg-white rounded-2xl p-3.5 border border-emerald-100 space-y-2">
           <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Chave Pix (E-mail):</p>
-          <div class="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-            <span id="pix-chave-valor" class="text-xs sm:text-sm font-black text-slate-800 select-all font-mono">guilherme.glsantos@gmail.com</span>
-            <button onclick="copiarPixChave()" class="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95 shadow-xs">
-              <i class="fa-solid fa-copy"></i> Copiar
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+            <span id="pix-chave-valor" class="text-xs sm:text-sm font-black text-slate-800 select-all font-mono break-all leading-snug">guilherme.glsantos@gmail.com</span>
+            <button onclick="copiarPixChave()" class="w-full sm:w-auto shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition active:scale-95 shadow-xs">
+              <i class="fa-solid fa-copy"></i> Copiar Chave
             </button>
           </div>
         </div>
@@ -946,18 +947,25 @@ let parcelasCount = 12;
 let pixTipoSel = 'cpf';
 
 // ===================== UTILS / MASKS =====================
-function maskPhone(el) {
-  let v = el.value.replace(/\D/g, '').slice(0, 11);
+function formatPhoneString(val) {
+  if (!val) return '';
+  let v = String(val).replace(/\D/g, '').slice(0, 11);
   if (v.length > 10) {
-    v = v.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+    return v.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
   } else if (v.length > 6) {
-    v = v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+    return v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
   } else if (v.length > 2) {
-    v = v.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
-  } else {
-    v = v.replace(/^(\d*)/, '($1');
+    return v.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+  } else if (v.length > 0) {
+    return '(' + v;
   }
-  el.value = v;
+  return '';
+}
+
+function maskPhone(el) {
+  if (typeof el === 'string') return formatPhoneString(el);
+  if (!el) return '';
+  el.value = formatPhoneString(el.value);
 }
 
 // ===================== INIT =====================
@@ -1937,150 +1945,196 @@ function generatePDF(quote) {
     const contentWidth = pageWidth - margin * 2;
 
     const addHeader = () => {
-      doc.setFillColor(15, 118, 110);
-      doc.rect(0, 0, pageWidth, 36, 'F');
+      // Header com gradiente sutil / faixa premium
+      doc.setFillColor(13, 148, 136); // Teal 600
+      doc.rect(0, 0, pageWidth, 38, 'F');
+      doc.setFillColor(15, 118, 110); // Faixa de contraste escuro embaixo
+      doc.rect(0, 36, pageWidth, 2, 'F');
 
-      // Logo ou iniciais fixa de demonstração
+      // Card Badge Logo / Iniciais
       doc.setFillColor(255, 255, 255);
-      doc.roundedRect(margin, 7, 22, 22, 3, 3, 'F');
+      doc.roundedRect(margin, 7, 24, 24, 3, 3, 'F');
       doc.setTextColor(15, 118, 110);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(13);
-      doc.text('DEMO', margin + 11, 21, { align: 'center' });
+      doc.setFontSize(14);
+      doc.text('DEMO', margin + 12, 22, { align: 'center' });
 
-      // Nome da empresa ou técnico mockado
+      // Título e Subtítulos
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(13);
-      doc.text('CLIMATIZACAO PROFISSIONAL (EXEMPLO DEMO)', margin + 27, 16);
+      doc.setFontSize(13.5);
+      doc.text('CLIMATIZAÇÃO PROFISSIONAL', margin + 29, 16);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.text('CNPJ: 00.000.000/0001-99  -  (11) 99999-9999  -  Sao Paulo - SP', margin + 27, 23);
+      doc.setFontSize(8.5);
+      doc.setTextColor(204, 251, 241); // Teal 100
+      doc.text('CNPJ: 00.000.000/0001-99   •   (11) 99999-9999   •   São Paulo - SP', margin + 29, 23);
 
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
-      doc.text('MODELO DEMONSTRATIVO  -  LIBERE O ACESSO COMPLETO POR APENAS R$ 19,90', margin + 27, 29);
-      doc.setTextColor(30, 41, 59);
+      doc.setTextColor(254, 243, 199); // Amber 100
+      doc.text('★ PROPOSTA DEMO  —  ACESSO COMPLETO POR R$ 19,90 VIA PIX', margin + 29, 30);
     };
 
     addHeader();
-    let y = 48;
+    let y = 49;
 
+    // Card elegante para os Dados do Cliente
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(margin, y, contentWidth, 36, 2.5, 2.5, 'FD');
+
+    // Título da Seção do Cliente com pill decorativa
+    doc.setFillColor(15, 118, 110);
+    doc.roundedRect(margin + 4, y + 4, 3, 10, 1, 1, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setTextColor(15, 118, 110);
-    doc.text('DADOS DO CLIENTE', margin, y);
-    y += 7;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9.5);
-    doc.setTextColor(51, 65, 85);
+    doc.text('DADOS DO CLIENTE & LOCAL DA OBRA', margin + 10, y + 11);
 
     const clientName = cleanPDF(quote.clienteNome || quote.clientName || 'Cliente');
     const clientPhone = cleanPDF(quote.clienteTelefone || quote.clientPhone || 'Nao informado');
     const clientAddress = cleanPDF(quote.clienteEndereco || quote.clientAddress || 'Nao informado');
     const serviceDesc = cleanPDF(quote.aparelho || quote.serviceDesc || quote.descricao || 'Instalacao / Manutencao de Ar-Condicionado');
 
-    const infoList = [
-      ['Cliente', clientName],
-      ['Telefone', clientPhone],
-      ['Endereco da instalacao', clientAddress],
-      ['Servico / aparelho', serviceDesc]
-    ];
+    doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cliente:', margin + 6, y + 19);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    doc.text(clientName, margin + 22, y + 19);
 
-    infoList.forEach(([label, value]) => {
-      const lineText = `${label}: ${value}`;
-      const lines = doc.splitTextToSize(lineText, contentWidth);
-      if (y + lines.length * 5 > pageHeight - 25) { doc.addPage(); addHeader(); y = 48; }
-      doc.text(lines, margin, y);
-      y += lines.length * 5 + 1;
-    });
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(71, 85, 105);
+    doc.text('WhatsApp:', margin + 100, y + 19);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    doc.text(clientPhone, margin + 120, y + 19);
 
-    y += 4;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(71, 85, 105);
+    doc.text('Endereço:', margin + 6, y + 26);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    doc.text(doc.splitTextToSize(clientAddress, contentWidth - 30)[0] || clientAddress, margin + 24, y + 26);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(71, 85, 105);
+    doc.text('Serviço:', margin + 6, y + 32);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    doc.text(doc.splitTextToSize(serviceDesc, contentWidth - 30)[0] || serviceDesc, margin + 22, y + 32);
+
+    y += 44;
+
+    // Tabela de Serviços e Itens
     const drawTableHeader = () => {
-      doc.setFillColor(241, 245, 249);
+      doc.setFillColor(15, 118, 110);
       doc.roundedRect(margin, y, contentWidth, 9, 2, 2, 'F');
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
-      doc.setTextColor(71, 85, 105);
-      doc.text('DESCRICAO DO ITEM / MATERIAL', margin + 4, y + 6);
-      doc.text('VALOR', pageWidth - margin - 4, y + 6, { align: 'right' });
+      doc.setTextColor(255, 255, 255);
+      doc.text('ESPECIFICAÇÃO DO SERVIÇO / MATERIAIS', margin + 5, y + 6);
+      doc.text('VALOR TOTAL', pageWidth - margin - 5, y + 6, { align: 'right' });
       y += 12;
     };
     drawTableHeader();
 
     // Itens da Proposta (Fixos e Mockados para a versão Demo)
     const items = [
-      { desc: '[EXEMPLO DEMO] Instalacao Padrao Split 9.000 a 12.000 BTUs', price: 450.00 },
-      { desc: '[EXEMPLO DEMO] Tubulacao de cobre e isolamento termico ate 3 metros', price: 180.00 },
+      { desc: '[EXEMPLO DEMO] Instalação Padrão Split 9.000 a 12.000 BTUs', price: 450.00 },
+      { desc: '[EXEMPLO DEMO] Tubulação de cobre e isolamento térmico até 3 metros', price: 180.00 },
       { desc: '[EXEMPLO DEMO] Carga de fluido refrigerante e teste de estanqueidade', price: 120.00 }
     ];
 
-    items.forEach(item => {
-      const lines = doc.splitTextToSize(item.desc, contentWidth - 45);
-      const rowHeight = Math.max(8, lines.length * 5 + 3);
-      if (y + rowHeight > pageHeight - 32) { doc.addPage(); addHeader(); y = 48; drawTableHeader(); }
-      doc.setDrawColor(226, 232, 240);
+    items.forEach((item, idx) => {
+      const lines = doc.splitTextToSize(cleanPDF(item.desc), contentWidth - 45);
+      const rowHeight = Math.max(9, lines.length * 5 + 4);
+      if (y + rowHeight > pageHeight - 45) { doc.addPage(); addHeader(); y = 48; drawTableHeader(); }
+
+      // Fundo zebrado sutil
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y, contentWidth, rowHeight, 'F');
+      }
+
+      doc.setDrawColor(241, 245, 249);
       doc.line(margin, y + rowHeight, pageWidth - margin, y + rowHeight);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(51, 65, 85);
-      doc.text(lines, margin + 4, y + 4.5);
-      doc.text(formatPDFMoney(item.price), pageWidth - margin - 4, y + 4.5, { align: 'right' });
+      doc.setFontSize(8.5);
+      doc.setTextColor(30, 41, 59);
+      doc.text(lines, margin + 5, y + 5.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text(formatPDFMoney(item.price), pageWidth - margin - 5, y + 5.5, { align: 'right' });
       y += rowHeight;
     });
 
-    y += 6;
+    y += 5;
+    // Total Card Destacado
     doc.setFillColor(240, 253, 250);
-    doc.roundedRect(margin, y, contentWidth, 14, 2, 2, 'F');
+    doc.setDrawColor(153, 246, 228);
+    doc.roundedRect(margin, y, contentWidth, 14, 2.5, 2.5, 'FD');
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 118, 110);
-    doc.setFontSize(11);
-    doc.text('TOTAL DO ORCAMENTO:', margin + 5, y + 9);
-    const totalVal = 750.00; // Total fixo mockado de demonstração
-    doc.text(formatPDFMoney(totalVal), pageWidth - margin - 5, y + 9, { align: 'right' });
-    y += 18;
+    doc.setFontSize(10.5);
+    doc.text('VALOR TOTAL DO INVESTIMENTO:', margin + 6, y + 9);
+    const totalVal = 750.00;
+    doc.setFontSize(12);
+    doc.text(formatPDFMoney(totalVal), pageWidth - margin - 6, y + 9.5, { align: 'right' });
+    y += 24; // Espaçamento generoso e arejado antes das condições
 
     // Condições de pagamento fixas demonstrativas
     const pagLines = [
       'Chave Pix: guilherme.glsantos@gmail.com (E-mail)',
-      'Cartao de Credito: Parcela em ate 12x sem juros',
-      'Garantia: 90 dias de garantia com nota e termo de instalacao',
-      'Validade da proposta: 10 dias'
+      'Cartão de Crédito: Parcele em até 12x sem juros no local da instalação',
+      'Termo de Garantia: 90 dias de garantia com emissão de ordem de serviço',
+      'Validade desta Proposta: 10 dias corridos a partir da data de emissão'
     ];
 
-    const boxH = pagLines.length * 5.5 + 9;
-    if (y + boxH > pageHeight - 45) { doc.addPage(); addHeader(); y = 48; }
+    const boxH = pagLines.length * 5.8 + 11;
+    if (y + boxH > pageHeight - 50) { doc.addPage(); addHeader(); y = 48; }
     doc.setFillColor(248, 250, 252);
-    doc.roundedRect(margin, y, contentWidth, boxH, 2, 2, 'F');
-    doc.setFontSize(8.5);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(margin, y, contentWidth, boxH, 2.5, 2.5, 'FD');
+
+    // Faixinha decorativa do bloco
+    doc.setFillColor(15, 118, 110);
+    doc.roundedRect(margin + 4, y + 3.5, 3, 9, 1, 1, 'F');
+
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 118, 110);
-    doc.text('CONDICOES DE PAGAMENTO E GARANTIA (MOCK DEMO)', margin + 4, y + 5.5);
-    y += 8;
+    doc.text('CONDIÇÕES COMERCIAIS & GARANTIA', margin + 10, y + 9.5);
+    y += 14;
+
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
     doc.setFontSize(8);
     pagLines.forEach(l => {
-      doc.text('- ' + l, margin + 4, y);
-      y += 5.2;
+      doc.text('•  ' + cleanPDF(l), margin + 8, y);
+      y += 5.5;
     });
-    y += 8;
+
+    // ESPAÇAMENTO GENEROSO ENTRE AS CONDIÇÕES E A CHAMADA ABAIXO
+    y += 12;
 
     // Box Chamada para Acesso Completo no PDF (gostinho de quero mais)
-    if (y + 22 > pageHeight - 20) { doc.addPage(); addHeader(); y = 48; }
+    const ctaHeight = 22;
+    if (y + ctaHeight > pageHeight - 20) { doc.addPage(); addHeader(); y = 48; }
     doc.setFillColor(254, 243, 199);
-    doc.roundedRect(margin, y, contentWidth, 20, 2, 2, 'F');
+    doc.setDrawColor(251, 191, 36);
+    doc.roundedRect(margin, y, contentWidth, ctaHeight, 2.5, 2.5, 'FD');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(180, 83, 9);
-    doc.text('GOSTOU DO MODELO? LIBERE O SEU USUARIO FULL POR APENAS R$ 19,90!', margin + 4, y + 6);
+    doc.text('GOSTOU DO MODELO? LIBERE O SEU USUÁRIO FULL POR APENAS R$ 19,90!', margin + 6, y + 7);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(146, 64, 14);
-    doc.text('Faca um Pix de R$ 19,90 para a chave: guilherme.glsantos@gmail.com e receba seu acesso', margin + 4, y + 11.5);
-    doc.text('completo vitalicio para criar orcamentos reais ilimitados com sua propria logo e dados!', margin + 4, y + 16.5);
-    y += 24;
+    doc.text('Faça um Pix de R$ 19,90 para a chave: guilherme.glsantos@gmail.com e receba seu acesso', margin + 6, y + 12.5);
+    doc.text('completo vitalício para criar orçamentos reais com sua logo, CNPJ e envio WhatsApp.', margin + 6, y + 17.5);
+    y += 28;
 
     // Rodapé em todas as páginas com carimbo DEMONSTRAÇÃO
     const pages = doc.getNumberOfPages();
@@ -2121,7 +2175,10 @@ let voiceTranscript = '';
 function initSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) return null;
-  if (recognition) return recognition;
+  if (recognition) {
+    try { recognition.abort(); } catch(e) {}
+    recognition = null;
+  }
 
   try {
     recognition = new SpeechRecognition();
@@ -2175,12 +2232,6 @@ function initSpeechRecognition() {
 }
 
 function toggleVoice() {
-  if (!recognition) initSpeechRecognition();
-  if (!recognition) {
-    showToast('Reconhecimento de voz não suportado neste navegador.');
-    return;
-  }
-
   if (isListening) {
     finishVoice();
   } else {
@@ -2196,14 +2247,22 @@ function startVoice() {
   const status = document.getElementById('modal-voice-status');
   if (status) status.textContent = '🎤 Microfone ativo... Fale o cliente, serviço e valores!';
 
+  // Reinicializa a instância para garantir que o microfone capture fresh áudio sempre
+  const rec = initSpeechRecognition();
+  if (!rec) {
+    stopVoice();
+    showToast('Reconhecimento de voz não suportado neste dispositivo/navegador.');
+    return;
+  }
+
   try {
-    recognition.start();
+    rec.start();
   } catch(e) {
     console.warn('Erro ao iniciar recognition:', e);
-    try { recognition.stop(); } catch(err){}
+    try { rec.abort(); } catch(err){}
     setTimeout(() => {
       try {
-        recognition.start();
+        rec.start();
       } catch(err2) {
         stopVoice();
         showToast('Não foi possível ativar o microfone. Verifique as permissões.');
@@ -2215,7 +2274,7 @@ function startVoice() {
 function stopVoice() {
   isListening = false;
   if (recognition) {
-    try { recognition.stop(); } catch(e){}
+    try { recognition.abort(); } catch(e){}
   }
   updateVoiceUI(false);
 }
@@ -2236,13 +2295,11 @@ function finishVoice() {
   }
 
   if (transcript) {
-    // Transcrição capturada! Preenche imediatamente sem perda de tempo
     setTimeout(() => {
       updateVoiceUI(false);
       parseVoiceTranscript(transcript);
     }, 150);
   } else {
-    // Se o último pacote ainda está no ar, aguarda 500ms
     setTimeout(() => {
       updateVoiceUI(false);
       const lateTranscript = voiceTranscript.trim();
@@ -2252,7 +2309,7 @@ function finishVoice() {
         showToast('Nenhum áudio detectado. Fale mais perto do microfone e tente de novo.');
         if (status) status.textContent = 'Toque no botão para gravar por voz.';
       }
-    }, 500);
+    }, 600);
   }
 }
 
@@ -2280,6 +2337,15 @@ function updateVoiceUI(listening) {
 // ===================== PARSER INTELIGENTE DE VOZ =====================
 function parseVoiceTranscript(text) {
   const original = text.trim();
+  if (!original) return;
+
+  // Limpa campos anteriores para colocar apenas os dados do novo áudio
+  document.getElementById('f-nome').value = '';
+  document.getElementById('f-telefone').value = '';
+  document.getElementById('f-endereco').value = '';
+  document.getElementById('f-aparelho').value = '';
+  itemRows = [];
+
   const normalized = original.normalize('NFD').replace(/\p{M}/gu, '');
 
   const markers = [
@@ -2329,16 +2395,34 @@ function parseVoiceTranscript(text) {
   // Remove resíduos de gatilho do nome
   clientName = clientName.replace(/^(?:(?:orcamento\s+(?:para\s+)?)|(?:o\s+|a\s+)?(?:cliente\s*(?:e|eh|:)?)|(?:nome(?:\s*do\s*cliente)?\s*(?:e|eh|:)?))\s*/i, '').trim();
 
+  // Extração inteligente de telefone com suporte a palavras faladas
   const phoneText = section(phoneMarker, [addressMarker, serviceMarker, itemMarker]);
-  const phoneDigits = (phoneText.match(/\+?\d[\d\s().-]{7,}\d/) || [])[0] || '';
+  let rawPhone = phoneText;
+  if (!rawPhone) {
+    const directPhoneMatch = normalized.match(/(?:\(?\b\d{2}\)?\s*)?(?:9\s*)?\d{4}[-\s]?\d{4}/);
+    if (directPhoneMatch) rawPhone = directPhoneMatch[0];
+  }
+
+  const phoneWordMap = {
+    zero: '0', um: '1', uma: '1', dois: '2', duas: '2', tres: '3', quatro: '4', cinco: '5',
+    seis: '6', meia: '6', sete: '7', oito: '8', nove: '9'
+  };
+  let phoneDigits = '';
+  if (rawPhone) {
+    let cleanPhoneStr = rawPhone.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
+    for (const [w, d] of Object.entries(phoneWordMap)) {
+      cleanPhoneStr = cleanPhoneStr.replace(new RegExp('\\b' + w + '\\b', 'g'), d);
+    }
+    phoneDigits = cleanPhoneStr.replace(/\D/g, '').slice(0, 11);
+  }
+
   const address = section(addressMarker, [phoneMarker, serviceMarker, itemMarker]);
 
   let service = section(serviceMarker, [phoneMarker, addressMarker, itemMarker]);
-  // Limpa termos gatilho para NUNCA escrever a palavra "descricao"
   service = service.replace(/^(?:(?:descricao(?:\s+do\s+servico|\s+do\s+aparelho)?|servico|aparelho|de|do|da|e|eh|o|a)\s*[:\-]?\s*)+/i, '').trim();
 
   if (!service) {
-    const serviceStart = normalized.search(/\b(?:ar\s+condicionado|split|inverter)\b/i);
+    const serviceStart = normalized.search(/\b(?:ar\s+condicionado|split|inverter|higienizacao|limpeza|manutencao|carga\s+de\s+gas)\b/i);
     if (serviceStart >= 0) service = original.slice(serviceStart, nextMarkerIndex(serviceStart)).replace(/^[\s,:;-]+|[\s,:;-]+$/g, '').trim();
   }
   const firstServiceMarker = serviceMarker.exec(normalized);
@@ -2415,7 +2499,7 @@ function parseVoiceTranscript(text) {
 
   // Fallback se nenhum item tiver sido adicionado mas tiver números no texto
   if (itemRows.length === 0) {
-    const anyVals = [...original.matchAll(/(?:R$s*)?(d+(?:[.,]d+)?)s*(?:reais?|,00)?/gi)];
+    const anyVals = [...original.matchAll(/(?:R\$\s*)?(\d+(?:[.,]\d+)?)\s*(?:reais?|,00)?/gi)];
     anyVals.forEach((vm, i) => {
       const v = parseFloat(vm[1].replace(',', '.'));
       if (v > 0 && v < 100000) {
@@ -2429,7 +2513,11 @@ function parseVoiceTranscript(text) {
 
   // Preencher os campos
   if (clientName) document.getElementById('f-nome').value = titleCase(clientName);
-  if (phoneDigits || phoneText) document.getElementById('f-telefone').value = maskPhone(phoneDigits || phoneText);
+  if (phoneDigits) {
+    document.getElementById('f-telefone').value = formatPhoneString(phoneDigits);
+  } else if (phoneText) {
+    document.getElementById('f-telefone').value = formatPhoneString(phoneText);
+  }
   if (address) document.getElementById('f-endereco').value = titleCase(address);
   if (service) document.getElementById('f-aparelho').value = titleCase(service);
 
