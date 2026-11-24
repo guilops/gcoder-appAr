@@ -2178,35 +2178,46 @@ function generatePDF(quote) {
 let recognition = null;
 let isListening = false;
 let voiceTranscript = '';
-let hasCapturedAudio = false;
+let isSpeechProcessing = false;
+
+function getSpeechRecognitionConstructor() {
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
 
 function initSpeechRecognition() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) return null;
+  const SpeechConstructor = getSpeechRecognitionConstructor();
+  if (!SpeechConstructor) return null;
+
   if (recognition) {
-    try { recognition.abort(); } catch(e) {}
+    try {
+      recognition.onstart = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.abort();
+    } catch(e) {}
     recognition = null;
   }
 
   try {
-    recognition = new SpeechRecognition();
-    recognition.lang = 'pt-BR';
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
+    const rec = new SpeechConstructor();
+    rec.lang = 'pt-BR';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
 
-    recognition.onstart = function() {
+    rec.onstart = function() {
       isListening = true;
+      isSpeechProcessing = false;
       updateVoiceUI(true);
     };
 
-    recognition.onresult = function(event) {
+    rec.onresult = function(event) {
       let fullText = '';
       for (let i = 0; i < event.results.length; i++) {
         fullText += ' ' + event.results[i][0].transcript;
       }
       voiceTranscript = fullText.replace(/\s+/g, ' ').trim();
-      if (voiceTranscript) hasCapturedAudio = true;
 
       const status = document.getElementById('modal-voice-status');
       if (status && voiceTranscript) {
@@ -2215,22 +2226,28 @@ function initSpeechRecognition() {
       }
     };
 
-    recognition.onerror = function(event) {
-      console.warn('Erro recognition:', event.error);
+    rec.onerror = function(event) {
+      console.warn('SpeechRecognition erro:', event.error);
       if (event.error === 'not-allowed') {
-        showToast('Permita o acesso ao microfone nas configurações do navegador.');
-        stopVoice();
+        showToast('Permita o acesso ao microfone nas configurações.');
+        resetVoiceUI();
+      } else if (event.error === 'service-not-allowed') {
+        showToast('Serviço de voz indisponível no navegador.');
+        resetVoiceUI();
       }
     };
 
-    recognition.onend = function() {
-      if (isListening) {
-        // Se o navegador encerrou sozinho por silêncio
+    rec.onend = function() {
+      // Se parou enquanto ainda estava no estado de listening (ex: silêncio do navegador)
+      if (isListening && !isSpeechProcessing) {
         finishVoice();
+      } else if (!isListening) {
+        updateVoiceUI(false);
       }
     };
 
-    return recognition;
+    recognition = rec;
+    return rec;
   } catch(e) {
     console.error('Falha ao inicializar voz:', e);
     return null;
@@ -2247,47 +2264,55 @@ function toggleVoice() {
 
 function startVoice() {
   voiceTranscript = '';
-  hasCapturedAudio = false;
-  isListening = true;
-  updateVoiceUI(true);
+  isListening = false;
+  isSpeechProcessing = false;
 
   const status = document.getElementById('modal-voice-status');
-  if (status) status.textContent = '🎤 Microfone ativo... Pode falar cliente, serviço e valores!';
+  if (status) status.textContent = '🎤 Ativando microfone... Pode falar!';
 
   const rec = initSpeechRecognition();
   if (!rec) {
-    stopVoice();
     showToast('Reconhecimento de voz não suportado neste navegador.');
+    resetVoiceUI();
     return;
   }
 
   try {
     rec.start();
   } catch(e) {
-    console.warn('Erro ao iniciar recognition:', e);
+    console.warn('Erro ao chamar rec.start():', e);
     try { rec.abort(); } catch(err){}
     setTimeout(() => {
       try {
-        rec.start();
+        const retryRec = initSpeechRecognition();
+        if (retryRec) retryRec.start();
       } catch(err2) {
-        stopVoice();
-        showToast('Não foi possível ativar o microfone. Verifique as permissões.');
+        resetVoiceUI();
+        showToast('Erro ao iniciar microfone. Tente tocar novamente.');
       }
-    }, 200);
+    }, 250);
   }
 }
 
-function stopVoice() {
+function resetVoiceUI() {
   isListening = false;
+  isSpeechProcessing = false;
   if (recognition) {
-    try { recognition.abort(); } catch(e){}
+    try {
+      recognition.onstart = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.abort();
+    } catch(e){}
     recognition = null;
   }
   updateVoiceUI(false);
 }
 
 function finishVoice() {
-  if (!isListening && !hasCapturedAudio) return;
+  if (isSpeechProcessing) return;
+  isSpeechProcessing = true;
   isListening = false;
 
   const text = document.getElementById('single-mic-text');
@@ -2295,19 +2320,28 @@ function finishVoice() {
   const status = document.getElementById('modal-voice-status');
   if (status) status.textContent = '⏳ Processando dados da sua fala...';
 
-  const transcript = voiceTranscript.trim();
-
+  // Desconecta o gravador para liberar totalmente o recurso de áudio
   if (recognition) {
+    try {
+      recognition.onstart = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.stop();
+    } catch(e){}
     try { recognition.abort(); } catch(e){}
     recognition = null;
   }
 
+  const transcript = (voiceTranscript || '').trim();
+
+  // Garante que o botão volte ao estado normal (verde) imediatamente
   updateVoiceUI(false);
+  isSpeechProcessing = false;
 
   if (transcript) {
     parseVoiceTranscript(transcript);
   } else {
-    showToast('Nenhum áudio detectado. Fale mais perto do microfone e tente de novo.');
+    showToast('Nenhum áudio detectado. Fale perto do microfone e toque novamente para gravar.');
     if (status) status.textContent = 'Toque no botão para gravar por voz.';
   }
 }
@@ -2324,7 +2358,7 @@ function updateVoiceUI(listening) {
     if (icon) icon.className = 'fa-solid fa-stop text-base';
     if (text) text.textContent = 'Parar e preencher campos';
     if (status && !voiceTranscript) {
-      status.textContent = '🎤 Gravando... Ao terminar de falar, toque no botão para preencher.';
+      status.textContent = '🎤 Gravando... Ao terminar de falar, toque no botão vermelho.';
     }
   } else {
     btn.className = 'w-full py-3.5 px-4 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-sm shadow transition-all active:scale-[0.98] flex items-center justify-center gap-2.5';
