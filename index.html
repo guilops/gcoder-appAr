@@ -1004,7 +1004,6 @@ function handleDemoLogin(e) {
     sessionStorage.setItem('ar_demo_logged', 'true');
     isDemoAuthenticated = true;
     document.getElementById('demo-login-modal').classList.add('hidden');
-    showToast('Login efetuado! Bem-vindo à versão de demonstração.');
   } else {
     if (errEl) errEl.classList.remove('hidden');
   }
@@ -2308,6 +2307,10 @@ function resetVoiceUI() {
     recognition = null;
   }
   updateVoiceUI(false);
+}
+
+function stopVoice() {
+  resetVoiceUI();
 }
 
 function finishVoice() {
