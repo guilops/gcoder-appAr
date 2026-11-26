@@ -286,8 +286,20 @@
       </div>
 
       <!-- Footer do Menu -->
-      <div class="p-4 border-t border-slate-100 bg-slate-50 text-center">
+      <div class="p-4 border-t border-slate-100 bg-slate-50 text-center space-y-2">
         <p class="text-[11px] text-slate-400 font-medium">Ar no Preço Certo • Climatização Profissional</p>
+        <div class="pt-2 border-t border-slate-200/60 flex flex-col items-center justify-center gap-1.5">
+          <div class="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+            <span>Desenvolvido por</span>
+            <a href="https://gcoder.com.br" target="_blank" rel="noopener noreferrer" class="inline-flex items-center hover:opacity-80 transition">
+              <img src="gcoder-logo-black.svg" alt="gcoder" class="h-3.5 w-auto inline-block">
+            </a>
+          </div>
+          <a href="https://gcoder.com.br" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] font-bold text-brand-600 hover:text-brand-700 transition hover:underline">
+            <span>gcoder.com.br</span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -657,6 +669,21 @@
         </button>
       </div>
     </div>
+
+    <!-- ===== RODAPÉ INSTITUCIONAL ===== -->
+    <footer class="mt-8 mb-4 px-4 text-center flex flex-col items-center justify-center gap-2">
+      <div class="flex items-center gap-2 text-xs text-slate-500 font-medium">
+        <span>Desenvolvido por</span>
+        <a href="https://gcoder.com.br" target="_blank" rel="noopener noreferrer" class="inline-flex items-center hover:opacity-80 transition" title="Acessar gcoder.com.br">
+          <img src="gcoder-logo-black.svg" alt="gcoder" class="h-4 w-auto inline-block">
+        </a>
+      </div>
+      <a href="https://gcoder.com.br" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-brand-600 hover:text-brand-700 transition hover:underline">
+        <span>gcoder.com.br</span>
+        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+      </a>
+      <p class="text-[10px] text-slate-400">© Ar no Preço Certo • Todos os direitos reservados</p>
+    </footer>
 
   </main>
 
@@ -2337,7 +2364,7 @@ function generatePDF(quote) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(148, 163, 184);
-      doc.text('Ar no Preco Certo - MODELO DE DEMONSTRACAO (PDF MOCKADO)', margin, pageHeight - 9);
+      doc.text('Ar no Preco Certo • Desenvolvido por gcoder (gcoder.com.br)', margin, pageHeight - 9);
       doc.text(`${page} / ${pages}`, pageWidth - margin, pageHeight - 9, { align: 'right' });
     }
 
