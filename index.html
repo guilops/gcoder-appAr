@@ -391,9 +391,10 @@
           <input id="srv-nome" type="text" placeholder="Ex.: Instalação Split 9.000 BTUs" maxlength="80"
             class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-500 placeholder:text-slate-300">
           <div class="flex gap-2">
-            <div class="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-              <span class="text-slate-400 text-xs font-bold">R$</span>
-              <input id="srv-valor" type="number" min="0" step="0.01" placeholder="0,00"
+            <div class="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus-within:border-brand-500 focus-within:bg-white transition">
+              <span class="text-slate-400 text-xs font-bold select-none">R$</span>
+              <input id="srv-valor" type="text" inputmode="numeric" placeholder="0,00"
+                oninput="maskMoneyGeneric(this)"
                 class="flex-1 bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-300">
             </div>
             <button onclick="addServico()" class="bg-brand-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-brand-700 transition active:scale-95 flex items-center gap-1">
@@ -745,33 +746,33 @@
 
       <!-- 1. Dados do Cliente -->
       <div class="space-y-3">
-        <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">1. Dados do Cliente</h4>
+        <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">1. Dados do Cliente <span class="text-rose-500 font-semibold normal-case text-[10px]">*obrigatórios</span></h4>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-[11px] font-bold text-slate-500 mb-1">Nome do Cliente</label>
-            <input type="text" id="f-nome" placeholder="João da Silva" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
+            <label class="block text-[11px] font-bold text-slate-500 mb-1">Nome do Cliente <span class="text-rose-500">*</span></label>
+            <input type="text" id="f-nome" placeholder="João da Silva" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500 transition">
           </div>
           <div>
-            <label class="block text-[11px] font-bold text-slate-500 mb-1">WhatsApp / Telefone</label>
-            <input type="text" id="f-telefone" placeholder="(11) 99999-9999" oninput="maskPhone(this)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
+            <label class="block text-[11px] font-bold text-slate-500 mb-1">WhatsApp / Telefone <span class="text-rose-500">*</span></label>
+            <input type="text" id="f-telefone" placeholder="(11) 99999-9999" oninput="maskPhone(this)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500 transition">
           </div>
         </div>
         <div>
-          <label class="block text-[11px] font-bold text-slate-500 mb-1">Endereço</label>
-          <input type="text" id="f-endereco" placeholder="Rua das Flores, 123 - Apto 42" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
+          <label class="block text-[11px] font-bold text-slate-500 mb-1">Endereço Completo <span class="text-rose-500">*</span></label>
+          <input type="text" id="f-endereco" placeholder="Rua das Flores, 123 - Apto 42" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500 transition">
         </div>
       </div>
 
       <!-- 2. Aparelho -->
       <div class="space-y-3">
-        <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">2. Aparelho / Serviço</h4>
-        <input type="text" id="f-aparelho" placeholder="Split 12.000 BTUs - Instalação" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
+        <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">2. Aparelho / Serviço <span class="text-rose-500">*</span></h4>
+        <input type="text" id="f-aparelho" placeholder="Split 12.000 BTUs - Instalação" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500 transition">
       </div>
 
       <!-- 3. Itens -->
       <div class="space-y-3">
         <div class="flex items-center justify-between">
-          <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">3. Materiais e Mão de Obra</h4>
+          <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">3. Materiais e Mão de Obra <span class="text-rose-500">*</span></h4>
           <div class="flex gap-2">
             <button onclick="openServicosQuickPick()" class="text-[11px] font-bold text-emerald-600 flex items-center gap-1 hover:text-emerald-700">
               <i class="fa-solid fa-list"></i> Meus serviços
@@ -1500,13 +1501,66 @@ function genItemRowId() {
   return 'it_' + Date.now() + '_' + itemRowCounter;
 }
 
+function formatMoneyDisplay(val) {
+  if (val === '' || val === null || val === undefined) return '';
+  const num = typeof val === 'number' ? val : (parseFloat(String(val).replace(/\./g, '').replace(',', '.')) || 0);
+  if (num === 0) return '';
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function maskMoneyInput(id, input) {
+  const clean = input.value.replace(/\D/g, '');
+  if (!clean) {
+    input.value = '';
+    updateItemVal(id, 0);
+    return;
+  }
+  const num = parseInt(clean, 10) / 100;
+  input.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  updateItemVal(id, num);
+}
+
+function formatMoneyBlur(id, input) {
+  const clean = input.value.replace(/\D/g, '');
+  if (!clean) {
+    input.value = '';
+    updateItemVal(id, 0);
+    return;
+  }
+  const num = parseInt(clean, 10) / 100;
+  input.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  updateItemVal(id, num);
+}
+
+function maskMoneyGeneric(el) {
+  const clean = el.value.replace(/\D/g, '');
+  if (!clean) {
+    el.value = '';
+    return;
+  }
+  const num = parseInt(clean, 10) / 100;
+  el.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function parseMoneyGeneric(str) {
+  if (typeof str === 'number') return isNaN(str) ? 0 : str;
+  if (!str) return 0;
+  const clean = String(str).replace(/\D/g, '');
+  if (!clean) return 0;
+  return parseInt(clean, 10) / 100;
+}
+
 function openQuoteModal(preloaded) {
   stopVoice();
+  cleanupRecognition();
   if (!preloaded) {
     itemRows = [];
     ['f-nome','f-telefone','f-endereco','f-aparelho'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.value = '';
+      if (el) {
+        el.value = '';
+        el.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+      }
     });
     currentOrcamento = null;
   } else {
@@ -1520,6 +1574,10 @@ function openQuoteModal(preloaded) {
     document.getElementById('f-telefone').value = preloaded.clienteTelefone || preloaded.clientPhone || '';
     document.getElementById('f-endereco').value = preloaded.clienteEndereco || preloaded.clientAddress || '';
     document.getElementById('f-aparelho').value = preloaded.aparelho || preloaded.serviceDesc || preloaded.descricao || '';
+    ['f-nome','f-telefone','f-endereco','f-aparelho'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+    });
     currentOrcamento = preloaded;
   }
   renderItemRows();
@@ -1531,6 +1589,7 @@ function openQuoteModal(preloaded) {
 
 function closeQuoteModal() {
   stopVoice();
+  cleanupRecognition();
   document.getElementById('quote-modal').classList.add('hidden');
 }
 
@@ -1559,10 +1618,14 @@ function renderItemRows() {
     <div class="item-row" id="row-${r.id}">
       <input type="text" placeholder="Descrição do item" value="${esc(r.desc)}"
         oninput="updateItemDesc('${r.id}', this.value)"
-        class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
-      <input type="number" placeholder="0,00" value="${r.val}"
-        oninput="updateItemVal('${r.id}', this.value)"
-        class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500 w-24 text-right">
+        class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-500 transition">
+      <div class="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-brand-500 focus-within:bg-white w-28 shrink-0 transition">
+        <span class="text-[11px] font-bold text-slate-400 mr-1 select-none">R$</span>
+        <input type="text" inputmode="numeric" placeholder="0,00" value="${formatMoneyDisplay(r.val)}"
+          oninput="maskMoneyInput('${r.id}', this)"
+          onblur="formatMoneyBlur('${r.id}', this)"
+          class="bg-transparent text-xs font-semibold text-slate-800 text-right w-full outline-none placeholder:text-slate-300">
+      </div>
       <button type="button" onclick="removeItemRow('${r.id}')" class="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 text-rose-400 flex items-center justify-center hover:bg-rose-100 transition shrink-0">
         <i class="fa-solid fa-xmark text-xs"></i>
       </button>
@@ -1577,7 +1640,10 @@ function updateItemDesc(id, v) {
 
 function updateItemVal(id, v) {
   const row = itemRows.find(r => String(r.id) === String(id));
-  if (row) { row.val = v; recalcTotal(); }
+  if (row) {
+    row.val = typeof v === 'number' ? v : (parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0);
+    recalcTotal();
+  }
 }
 
 function recalcTotal() {
@@ -1586,31 +1652,117 @@ function recalcTotal() {
   return total;
 }
 
-// CORREÇÃO DEFINITIVA DO getFormData: NUNCA usa querySelector('#row-' + id) que quebrava seletores!
+function validateQuoteForm() {
+  const nomeEl = document.getElementById('f-nome');
+  const telEl = document.getElementById('f-telefone');
+  const endEl = document.getElementById('f-endereco');
+  const aparEl = document.getElementById('f-aparelho');
+
+  const highlightField = (el, message) => {
+    showToast(message);
+    if (el) {
+      el.focus();
+      el.classList.add('border-rose-500', 'ring-2', 'ring-rose-200');
+      const removeHighlight = () => {
+        el.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+        el.removeEventListener('input', removeHighlight);
+      };
+      el.addEventListener('input', removeHighlight);
+    }
+  };
+
+  const nome = (nomeEl ? nomeEl.value : '').trim();
+  if (!nome || nome.length < 2) {
+    highlightField(nomeEl, 'Preencha o nome do cliente');
+    return false;
+  }
+
+  const tel = (telEl ? telEl.value : '').trim();
+  const telDigits = tel.replace(/\D/g, '');
+  if (!tel || telDigits.length < 10) {
+    highlightField(telEl, 'Preencha o telefone/WhatsApp com DDD (mínimo 10 dígitos)');
+    return false;
+  }
+
+  const end = (endEl ? endEl.value : '').trim();
+  if (!end || end.length < 3) {
+    highlightField(endEl, 'Preencha o endereço completo do cliente');
+    return false;
+  }
+
+  const apar = (aparEl ? aparEl.value : '').trim();
+  if (!apar || apar.length < 2) {
+    highlightField(aparEl, 'Preencha o aparelho ou serviço a ser realizado');
+    return false;
+  }
+
+  // Sincroniza dados das linhas com os inputs atuais
+  itemRows.forEach(r => {
+    const rowEl = document.getElementById('row-' + r.id);
+    if (rowEl) {
+      const descEl = rowEl.querySelector('input[type="text"]');
+      const valEl = rowEl.querySelector('input[inputmode="numeric"]');
+      if (descEl) r.desc = descEl.value.trim();
+      if (valEl) {
+        const clean = valEl.value.replace(/\D/g, '');
+        r.val = clean ? parseInt(clean, 10) / 100 : 0;
+      }
+    }
+  });
+
+  const validItems = itemRows.filter(r => r.desc && parseFloat(r.val) > 0);
+  if (validItems.length === 0) {
+    showToast('Adicione pelo menos um item com descrição e valor');
+    return false;
+  }
+
+  // Bloqueia se há item com descrição mas sem valor
+  const itemSemValor = itemRows.find(r => r.desc && (!r.val || parseFloat(r.val) <= 0));
+  if (itemSemValor) {
+    showToast('Preencha o valor de todos os itens ou remova os vazios');
+    return false;
+  }
+
+  // Bloqueia se há item com valor mas sem descrição
+  const itemSemDesc = itemRows.find(r => (!r.desc || !r.desc.trim()) && parseFloat(r.val) > 0);
+  if (itemSemDesc) {
+    showToast('Preencha a descrição de todos os itens com valor');
+    return false;
+  }
+
+  const total = validItems.reduce((acc, r) => acc + (parseFloat(r.val) || 0), 0);
+  if (total <= 0) {
+    showToast('O valor total do orçamento deve ser maior que zero');
+    return false;
+  }
+
+  return true;
+}
+
 function getFormData() {
   itemRows.forEach(r => {
     const rowEl = document.getElementById('row-' + r.id);
     if (rowEl) {
       const descEl = rowEl.querySelector('input[type="text"]');
-      const valEl = rowEl.querySelector('input[type="number"]');
-      if (descEl) r.desc = descEl.value;
-      if (valEl) r.val = valEl.value;
+      const valEl = rowEl.querySelector('input[inputmode="numeric"]');
+      if (descEl) r.desc = descEl.value.trim();
+      if (valEl) {
+        const clean = valEl.value.replace(/\D/g, '');
+        r.val = clean ? parseInt(clean, 10) / 100 : 0;
+      }
     }
   });
 
-  const validItems = itemRows.filter(r => r.desc || r.val).map(r => ({
-    desc: r.desc || 'Item',
+  const validItems = itemRows.filter(r => r.desc && parseFloat(r.val) > 0).map(r => ({
+    desc: r.desc,
     val: parseFloat(r.val) || 0
   }));
   const total = validItems.reduce((s, r) => s + (r.val || 0), 0);
 
-  let clienteNome = document.getElementById('f-nome').value.trim();
-  if (!clienteNome) clienteNome = 'Cliente';
+  const clienteNome = document.getElementById('f-nome').value.trim();
   const clienteTelefone = document.getElementById('f-telefone').value.trim();
   const clienteEndereco = document.getElementById('f-endereco').value.trim();
   const aparelho = document.getElementById('f-aparelho').value.trim();
-
-  const finalItens = validItems.length > 0 ? validItems : [{ desc: aparelho || 'Serviço de Climatização', val: total }];
 
   return {
     id: currentOrcamento ? currentOrcamento.id : genId(),
@@ -1624,17 +1776,44 @@ function getFormData() {
     clientPhone: clienteTelefone,
     clientAddress: clienteEndereco,
     serviceDesc: aparelho,
-    itens: finalItens,
-    items: finalItens.map(i => ({ desc: i.desc, price: i.val })),
+    itens: validItems,
+    items: validItems.map(i => ({ desc: i.desc, price: i.val })),
     total
   };
 }
 
 function saveAndGeneratePDF() {
+  if (!validateQuoteForm()) {
+    return;
+  }
+
   try {
     const data = getFormData();
 
-    // Atualiza ou insere na lista
+    // Auto-salva novos serviços cadastrados no orçamento na tabela de serviços
+    let newServicesCount = 0;
+    data.itens.forEach(it => {
+      const desc = (it.desc || '').trim();
+      const val = parseFloat(it.val) || 0;
+      if (desc && val > 0) {
+        const jaExiste = servicos.some(s => s.nome.trim().toLowerCase() === desc.toLowerCase());
+        if (!jaExiste) {
+          servicos.push({
+            id: genId(),
+            nome: titleCase(desc),
+            valor: val
+          });
+          newServicesCount++;
+        }
+      }
+    });
+
+    if (newServicesCount > 0) {
+      saveServicos();
+      renderServicos();
+    }
+
+    // Atualiza ou insere na lista de orçamentos
     const idx = orcamentos.findIndex(o => o.id === data.id);
     if (idx >= 0) orcamentos[idx] = data;
     else orcamentos.unshift(data);
@@ -1662,10 +1841,10 @@ function saveAndGeneratePDF() {
 function applyServiceTemplate(name, defaultPrice) {
   const ap = document.getElementById('f-aparelho');
   if (ap) ap.value = name;
-  if (itemRows.length === 0 || (itemRows.length === 1 && !itemRows[0].desc && !itemRows[0].val)) {
-    itemRows = [{ id: genItemRowId(), desc: name, val: defaultPrice.toString() }];
+  if (itemRows.length === 0 || (itemRows.length === 1 && !itemRows[0].desc && (!itemRows[0].val || parseFloat(itemRows[0].val) === 0))) {
+    itemRows = [{ id: genItemRowId(), desc: name, val: defaultPrice }];
   } else {
-    itemRows.push({ id: genItemRowId(), desc: name, val: defaultPrice.toString() });
+    itemRows.push({ id: genItemRowId(), desc: name, val: defaultPrice });
   }
   renderItemRows();
   showToast('Modelo "' + name + '" aplicado!');
@@ -2182,73 +2361,23 @@ function getSpeechConstructor() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
-// Cria uma única instância persistente e estável para a sessão
-function getOrCreateRecognition() {
-  if (recognition) return recognition;
-  const SpeechConstructor = getSpeechConstructor();
-  if (!SpeechConstructor) return null;
-
-  try {
-    const rec = new SpeechConstructor();
-    rec.lang = 'pt-BR';
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.maxAlternatives = 1;
-
-    rec.onstart = function() {
-      isListening = true;
-      updateVoiceUI(true);
-      const status = document.getElementById('modal-voice-status');
-      if (status) status.textContent = '🎤 Microfone ativo! Pode falar...';
-    };
-
-    rec.onresult = function(event) {
-      let text = '';
-      for (let i = 0; i < event.results.length; i++) {
-        text += ' ' + event.results[i][0].transcript;
-      }
-      voiceTranscript = text.replace(/\s+/g, ' ').trim();
-      const status = document.getElementById('modal-voice-status');
-      if (status && voiceTranscript) {
-        const preview = voiceTranscript.length > 50 ? '...' + voiceTranscript.slice(-50) : voiceTranscript;
-        status.textContent = '🎤 Ouvindo: "' + preview + '"';
-      }
-    };
-
-    rec.onerror = function(event) {
-      console.warn('Speech error:', event.error);
-      if (event.error === 'not-allowed') {
-        showToast('Permissão de microfone negada.');
-      }
-      if (event.error !== 'no-speech') {
-        isListening = false;
-        updateVoiceUI(false);
-      }
-    };
-
-    rec.onend = function() {
-      const wasListening = isListening;
-      isListening = false;
-      updateVoiceUI(false);
-
-      // Se o usuário finalizou ou o navegador parou e capturou texto
-      if (wasListening && voiceTranscript.trim()) {
-        const textToParse = voiceTranscript.trim();
-        voiceTranscript = '';
-        parseVoiceTranscript(textToParse);
-      }
-    };
-
-    recognition = rec;
-    return recognition;
-  } catch(e) {
-    console.error('Erro ao instanciar SpeechRecognition:', e);
-    return null;
+function cleanupRecognition() {
+  if (recognition) {
+    try {
+      recognition.onstart = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.onspeechend = null;
+      recognition.abort();
+    } catch(e) {}
+    recognition = null;
   }
 }
 
 function initSpeechRecognition() {
-  return getOrCreateRecognition();
+  // Apenas checa disponibilidade sem manter instância inativa
+  return getSpeechConstructor();
 }
 
 function toggleVoice() {
@@ -2260,48 +2389,133 @@ function toggleVoice() {
 }
 
 function startVoice() {
-  const rec = getOrCreateRecognition();
-  if (!rec) {
+  const SpeechConstructor = getSpeechConstructor();
+  if (!SpeechConstructor) {
     showToast('Reconhecimento de voz não suportado neste navegador.');
     return;
   }
 
+  // Aborta qualquer gravação anterior e limpa listeners
+  cleanupRecognition();
   voiceTranscript = '';
+  isListening = false;
+
   const status = document.getElementById('modal-voice-status');
   if (status) status.textContent = '🎤 Abrindo microfone...';
 
   try {
-    rec.start();
-  } catch(e) {
-    // Se o reconhecimento ainda estava ativo de uma chamada anterior, para e religa limpo
-    try { rec.stop(); } catch(err){}
-    setTimeout(() => {
-      try {
-        rec.start();
-      } catch(e2) {
-        console.warn('Erro ao reiniciar reconhecimento:', e2);
+    const rec = new SpeechConstructor();
+    rec.lang = 'pt-BR';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+
+    rec.onstart = function() {
+      isListening = true;
+      updateVoiceUI(true);
+      const s = document.getElementById('modal-voice-status');
+      if (s) s.textContent = '🎤 Microfone ativo! Pode falar...';
+    };
+
+    rec.onresult = function(event) {
+      let text = '';
+      for (let i = 0; i < event.results.length; i++) {
+        text += ' ' + event.results[i][0].transcript;
+      }
+      voiceTranscript = text.replace(/\s+/g, ' ').trim();
+      const s = document.getElementById('modal-voice-status');
+      if (s && voiceTranscript) {
+        const preview = voiceTranscript.length > 50 ? '...' + voiceTranscript.slice(-50) : voiceTranscript;
+        s.textContent = '🎤 Ouvindo: "' + preview + '"';
+      }
+    };
+
+    rec.onerror = function(event) {
+      console.warn('Speech error:', event.error);
+      if (event.error === 'not-allowed') {
+        showToast('Permissão de microfone negada. Permita o microfone no navegador.');
         isListening = false;
         updateVoiceUI(false);
-        showToast('Toque novamente para gravar.');
+        cleanupRecognition();
+      } else if (event.error === 'network') {
+        showToast('Erro de rede no reconhecimento de voz.');
+        isListening = false;
+        updateVoiceUI(false);
+        cleanupRecognition();
+      } else if (event.error !== 'no-speech') {
+        isListening = false;
+        updateVoiceUI(false);
+        cleanupRecognition();
       }
-    }, 150);
+    };
+
+    rec.onend = function() {
+      // Disparado quando o navegador finaliza por conta própria (ex: silêncio prolongado)
+      if (isListening) {
+        isListening = false;
+        updateVoiceUI(false);
+        const textToParse = (voiceTranscript || '').trim();
+        cleanupRecognition();
+        if (textToParse) {
+          parseVoiceTranscript(textToParse);
+        } else {
+          const s = document.getElementById('modal-voice-status');
+          if (s) s.textContent = 'Toque no botão para gravar por voz.';
+        }
+      }
+    };
+
+    recognition = rec;
+    rec.start();
+  } catch(e) {
+    console.error('Erro ao iniciar reconhecimento de voz:', e);
+    isListening = false;
+    updateVoiceUI(false);
+    cleanupRecognition();
+    showToast('Não foi possível iniciar o microfone. Toque novamente.');
   }
 }
 
 function stopVoice() {
+  if (!isListening && !recognition) {
+    updateVoiceUI(false);
+    return;
+  }
+
   isListening = false;
+  updateVoiceUI(false);
   const status = document.getElementById('modal-voice-status');
   if (status) status.textContent = '⏳ Processando o que você falou...';
 
-  if (recognition) {
+  const recInstance = recognition;
+  let finalized = false;
+
+  const finalize = () => {
+    if (finalized) return;
+    finalized = true;
+    const textToParse = (voiceTranscript || '').trim();
+    cleanupRecognition();
+    if (textToParse) {
+      parseVoiceTranscript(textToParse);
+    } else {
+      showToast('Nenhum áudio detectado. Fale perto do microfone e tente novamente.');
+      if (status) status.textContent = 'Toque no botão para gravar por voz.';
+    }
+  };
+
+  if (recInstance) {
     try {
-      recognition.stop();
+      recInstance.onend = function() {
+        finalize();
+      };
+      recInstance.stop();
+      // Timeout seguro se o navegador atrasar o disparo de onend
+      setTimeout(finalize, 450);
     } catch(e) {
-      try { recognition.abort(); } catch(e2){}
-      updateVoiceUI(false);
+      finalize();
     }
   } else {
-    updateVoiceUI(false);
+    finalize();
   }
 }
 
@@ -2535,10 +2749,10 @@ function saveServicos() {
 
 function addServico() {
   const nome = document.getElementById('srv-nome').value.trim();
-  const valor = parseFloat(document.getElementById('srv-valor').value) || 0;
+  const valor = parseMoneyGeneric(document.getElementById('srv-valor').value);
   if (!nome) { showToast('Informe o nome do serviço'); return; }
   if (valor <= 0) { showToast('Informe um valor maior que zero'); return; }
-  servicos.push({ id: genId(), nome, valor });
+  servicos.push({ id: genId(), nome: titleCase(nome), valor });
   saveServicos();
   document.getElementById('srv-nome').value = '';
   document.getElementById('srv-valor').value = '';
@@ -2557,9 +2771,11 @@ function editServico(id) {
   if (!s) return;
   const novoNome = prompt('Nome do serviço:', s.nome);
   if (novoNome === null) return;
-  const novoValor = parseFloat(prompt('Valor (R$):', s.valor));
+  const novoValorStr = prompt('Valor (R$):', formatMoneyDisplay(s.valor));
+  if (novoValorStr === null) return;
+  const novoValor = parseMoneyGeneric(novoValorStr);
   if (isNaN(novoValor) || novoValor <= 0) { showToast('Valor inválido'); return; }
-  s.nome = novoNome.trim() || s.nome;
+  s.nome = novoNome.trim() ? titleCase(novoNome.trim()) : s.nome;
   s.valor = novoValor;
   saveServicos();
   renderServicos();
@@ -2633,7 +2849,13 @@ function openServicosQuickPick() {
 function pickServico(id) {
   const s = servicos.find(x => x.id === id);
   if (!s) return;
-  addItemRow(s.nome, s.valor);
+  if (itemRows.length === 1 && !itemRows[0].desc && (!itemRows[0].val || parseFloat(itemRows[0].val) === 0)) {
+    itemRows[0].desc = s.nome;
+    itemRows[0].val = s.valor;
+  } else {
+    itemRows.push({ id: genItemRowId(), desc: s.nome, val: s.valor });
+  }
+  renderItemRows();
   document.getElementById('servicos-quickpick').classList.add('hidden');
   showToast('"' + s.nome + '" adicionado!');
 }
@@ -2644,9 +2866,14 @@ document.addEventListener('DOMContentLoaded', () => {
   renderItemRows();
   init();
 
-  // Register service worker
+  // Register service worker com atualização forçada
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    const swFile = 'service-worker.js';
+    navigator.serviceWorker.register(swFile).then(reg => {
+      reg.update().catch(() => {});
+    }).catch(() => {
+      navigator.serviceWorker.register('sw.js').then(reg => reg.update().catch(() => {})).catch(() => {});
+    });
   }
 });
 </script>
